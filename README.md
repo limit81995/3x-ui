@@ -1,237 +1,128 @@
-[English](/README.md) | [فارسی](/README.fa_IR.md) | [العربية](/README.ar_EG.md) | [中文](/README.zh_CN.md) | [Español](/README.es_ES.md) | [Русский](/README.ru_RU.md) | [Türkçe](/README.tr_TR.md)
+# 3X-UI · HTB 端口限速扩展
 
-<p align="center">
-  <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="./media/3x-ui-dark.png">
-    <img alt="3x-ui" src="./media/3x-ui-light.png">
-  </picture>
-</p>
+感谢原项目作者 [MHSanaei](https://github.com/MHSanaei) 及所有贡献者。本项目基于 [MHSanaei/3x-ui](https://github.com/MHSanaei/3x-ui)，原有功能和基础使用说明请参阅 **[上游中文 README](https://github.com/MHSanaei/3x-ui/blob/main/README.zh_CN.md)**。
 
-<p align="center">
-  <a href="https://github.com/limit81995/3x-ui/releases"><img src="https://img.shields.io/github/v/release/limit81995/3x-ui" alt="Release"></a>
-  <a href="https://github.com/MHSanaei/3x-ui/actions"><img src="https://img.shields.io/github/actions/workflow/status/mhsanaei/3x-ui/release.yml.svg" alt="Build"></a>
-  <a href="#"><img src="https://img.shields.io/github/go-mod/go-version/mhsanaei/3x-ui.svg" alt="GO Version"></a>
-  <a href="https://github.com/limit81995/3x-ui/releases/latest"><img src="https://img.shields.io/github/downloads/limit81995/3x-ui/total.svg" alt="Downloads"></a>
-  <a href="https://www.gnu.org/licenses/gpl-3.0.en.html"><img src="https://img.shields.io/badge/license-GPL%20V3-blue.svg?longCache=true" alt="License"></a>
-  <a href="https://pkg.go.dev/github.com/mhsanaei/3x-ui/v3"><img src="https://pkg.go.dev/badge/github.com/mhsanaei/3x-ui/v3.svg" alt="Go Reference"></a>
-  <a href="https://docs.sanaei.dev"><img src="https://img.shields.io/badge/docs-docs.sanaei.dev-22d3ee" alt="Documentation"></a>
-</p>
+本仓库在原项目基础上增加端口限速，保持扩展解耦，持续跟随上游更新。安装和升级使用当前仓库 **`limit81995/3x-ui`**。
 
-**3X-UI** is an advanced, open-source web control panel for managing [Xray-core](https://github.com/XTLS/Xray-core) servers. It provides a clean, multi-language interface for deploying, configuring, and monitoring a wide range of proxy and VPN protocols — from a single VPS to multi-node deployments.
+## 安装
 
-Built as an enhanced fork of the original X-UI project, 3X-UI adds broader protocol support, improved stability, per-client traffic accounting, and many quality-of-life features.
+脚本安装需要本仓库已发布对应的 [Release 安装包](https://github.com/limit81995/3x-ui/releases)，Docker 安装需要本仓库已发布对应镜像。仅推送代码到 `dev` 不会自动发布这些产物；缺少版本时不会回退到上游安装包。
 
-> [!IMPORTANT]
-> This project is intended for personal use only. Please do not use it for illegal purposes or in a production environment.
+### 脚本安装（不使用 Docker）
 
-## Features
-
-- **Multi-protocol inbounds** — VLESS, VMess, Trojan, Shadowsocks, WireGuard, AmneziaWG, TUIC v5, Hysteria2, MTProto, HTTP, SOCKS (Mixed), Dokodemo-door / Tunnel, and TUN.
-- **Modern transports & security** — TCP (Raw), mKCP, WebSocket, gRPC, HTTPUpgrade, and XHTTP, secured with TLS, XTLS, and REALITY.
-- **AmneziaWG built in** — DPI-resistant WireGuard runs inside the panel on a userspace network stack, with no kernel module, DKMS, or extra packages to install.
-- **Native TUIC v5 server** — In-process Go QUIC server with Xray routing and per-client traffic accounting; BBR and New Reno are available server-side. CUBIC is preserved in the client profile but currently falls back to New Reno on the server.
-- **MTProto proxies** — per-client FakeTLS secrets, ad-tags, and quotas, applied live without dropping existing connections.
-- **Fallbacks** — serve multiple protocols on a single port (e.g. VLESS and Trojan on 443) using Xray's fallback support.
-- **Per-client management** — traffic quotas, expiry dates, IP limits with trusted-address exemptions, HWID device limits, scheduled renewal cycles, live online status, and one-click share links, QR codes, and subscriptions.
-- **Traffic statistics** — per inbound, per client, and per outbound, with reset controls.
-- **Multi-node support** — manage and scale across multiple servers from a single panel, including cloning inbounds onto other nodes.
-- **Outbound & routing** — WARP, NordVPN, PIA, custom routing rules, load balancers with balancer-to-balancer fallback, and outbound proxy chaining. Bundled geosite and geoip categories are browsable straight from the rule editor.
-- **Built-in subscription server** — raw, JSON, and Clash output, auto-selected from the client's User-Agent, plus [custom page templates](docs/custom-subscription-templates.md).
-- **Telegram and Discord bots** for remote monitoring and management.
-- **RESTful API** with scoped, optionally expiring tokens and an in-panel API reference.
-- **Installable panel (PWA)** — pin 3X-UI to a desktop or phone home screen.
-- **Flexible storage** — SQLite (default) or PostgreSQL.
-- **14 UI languages** with dark and light themes.
-- **Fail2ban integration** for enforcing per-client IP limits.
-
-## Screenshots
-
-<details>
-<summary>Click to expand</summary>
-
-<picture>
-  <source media="(prefers-color-scheme: dark)" srcset="./media/01-overview-dark.png">
-  <img alt="Overview" src="./media/01-overview-light.png">
-</picture>
-
-<picture>
-  <source media="(prefers-color-scheme: dark)" srcset="./media/02-add-inbound-dark.png">
-  <img alt="Inbounds" src="./media/02-add-inbound-light.png">
-</picture>
-
-<picture>
-  <source media="(prefers-color-scheme: dark)" srcset="./media/03-add-client-dark.png">
-  <img alt="Add client" src="./media/03-add-client-light.png">
-</picture>
-
-<picture>
-  <source media="(prefers-color-scheme: dark)" srcset="./media/05-add-nodes-dark.png">
-  <img alt="Configs" src="./media/05-add-nodes-light.png">
-</picture>
-
-</details>
-
-## Quick Start
-
-This fork's `dev` branch adds HTB port speed limits. Native packages use the existing [Release workflow](.github/workflows/release.yml). `install.sh` installs prebuilt binaries; the target server does not need Docker, Go or Node.js. See the [native installation guide (中文)](README.zh_CN.md#htb-分支原生安装不使用-docker) for commands and tc requirements.
-
-The installer, CLI updater and panel update checker default to `limit81995/3x-ui`, with scripts from `dev`. Online installation and updates require matching Release assets in this repository; pushing to `dev` does not automatically publish them. Missing releases fail without falling back to upstream. To use another source explicitly, set `XUI_RELEASE_REPO=owner/repository` and `XUI_RELEASE_REF=branch-or-tag` for both the CLI and panel service.
+在 Linux 服务器以 root 身份执行，安装最新稳定版：
 
 ```bash
-bash <(curl -Ls https://raw.githubusercontent.com/limit81995/3x-ui/dev/install.sh)
+bash <(curl -fsSL https://raw.githubusercontent.com/limit81995/3x-ui/dev/install.sh)
 ```
 
-To install a specific version published in this repository, append its tag (e.g. `v3.7.0`, if published):
+安装开发版（需已发布 `dev-latest`）：
 
 ```bash
-bash <(curl -Ls https://raw.githubusercontent.com/limit81995/3x-ui/dev/install.sh) v3.7.0
+bash <(curl -fsSL https://raw.githubusercontent.com/limit81995/3x-ui/dev/install.sh) dev-latest
 ```
 
-To install this repository's **dev** pre-release, publish its `dev-latest` Release first, then pass `dev-latest`:
+安装指定版本时，将末尾的 `dev-latest` 换成本仓库已发布的版本标签。
+
+脚本下载编译好的程序，服务器无需安装 Go、Node.js 或编译器；同时准备 tc 依赖及限速所需的内核模块。安装完成后会显示面板地址、随机账号和密码，运行 `x-ui` 可查看或重置登录信息。
+
+已有本仓库的完整安装包、同名 `.sha256` 文件和配套 `install.sh` 时，也可本地安装（以下以 amd64 为例，仍需联网安装系统依赖）：
 
 ```bash
-bash <(curl -Ls https://raw.githubusercontent.com/limit81995/3x-ui/dev/install.sh) dev-latest
+sudo env XUI_INSTALL_ARCHIVE="$PWD/x-ui-linux-amd64.tar.gz" bash ./install.sh
 ```
 
-During installation a random username, password, and access path are generated. After installation, run `x-ui` to open the management menu, where you can start/stop the service, view or reset your login credentials, manage SSL certificates, and more.
+### Docker 安装（host 模式）
 
-For native installations, `sudo x-ui update` installs this repository's latest stable release; `sudo x-ui update-dev` installs its `dev-latest` release. The panel's update button uses the same repository. Existing installations need this version of both the binary and CLI script first; upgrade them with a matching local package as described in the native guide. Docker installations are updated by recreating the container with a new image and the existing data mounts.
+以下示例使用 `ghcr.io/limit81995/3x-ui:dev` 镜像；需先通过现有 [Docker 工作流](.github/workflows/docker.yml) 在 `dev` 分支手动构建并发布该标签。
 
-Every release asset is published with a `.sha256` sum next to it. Both `install.sh` and the updater verify the archive against that sum and abort on a mismatch.
-
-For full documentation — installation, configuration, operations, and the complete API reference — visit **[docs.sanaei.dev](https://docs.sanaei.dev)**.
-
-### Unattended install
-
-The installer also runs **non-interactively** for cloud-init.
-Set `XUI_NONINTERACTIVE=1` (or pipe with no TTY) and it installs end-to-end with
-zero prompts, generating random credentials and writing them to
-`/etc/x-ui/install-result.env`. See [`deploy/`](deploy/) for:
-
-- [Cloud-init user-data](deploy/cloud-init/) — unattended install on any cloud (Hetzner/AWS/DO/Vultr/GCP/Azure/Oracle)
-- [Hetzner Cloud notes](deploy/marketplace/hetzner/) — cloud-init deployment on Hetzner
-
-## Supported Platforms
-
-**Operating systems:** Ubuntu, Debian, Armbian, Fedora, CentOS, RHEL, AlmaLinux, Rocky Linux, Oracle Linux, Amazon Linux, Virtuozzo, Arch, Manjaro, Parch, openSUSE (Tumbleweed / Leap), Alpine, and Windows.
-
-**Architectures:** `amd64` · `386` · `arm64` (aarch64) · `armv7` · `armv6` · `armv5` · `s390x`.
-
-## Database Options
-
-3X-UI supports two backends, chosen during the install:
-
-- **SQLite** (default) — a single file at `/etc/x-ui/x-ui.db`. Zero setup, ideal for small and medium deployments.
-- **PostgreSQL** — recommended for high client counts or multi-node setups. The installer can install PostgreSQL locally for you, or accept a DSN to an existing server.
-
-At runtime the backend is selected via environment variables (the installer writes these to `/etc/default/x-ui` for you):
-
-```
-XUI_DB_TYPE=postgres
-XUI_DB_DSN=postgres://xui:password@127.0.0.1:5432/xui?sslmode=disable
-```
-
-### Migrating an existing SQLite install to PostgreSQL
+先在 Linux 宿主机加载限速模块，再启动容器：
 
 ```bash
-x-ui migrate-db --dsn "postgres://xui:password@127.0.0.1:5432/xui?sslmode=disable"
-# then set XUI_DB_TYPE and XUI_DB_DSN in /etc/default/x-ui and restart:
-systemctl restart x-ui
+sudo modprobe -a ifb sch_htb sch_fq_codel sch_ingress cls_flower act_mirred
+mkdir -p db cert acme
+
+docker run -d \
+  --name 3xui \
+  --network host \
+  --cap-add NET_ADMIN \
+  --cap-add NET_RAW \
+  --restart unless-stopped \
+  -v "$PWD/db:/etc/x-ui" \
+  -v "$PWD/cert:/root/cert" \
+  -v "$PWD/acme:/root/.acme.sh" \
+  ghcr.io/limit81995/3x-ui:dev
 ```
 
-The source SQLite file is left untouched; remove it manually once you have verified the new backend.
+host 模式直接使用宿主机端口，无需 `-p` 映射。其他电脑通过服务器 IP 访问，面板和入站需监听可访问的地址，并放行相应防火墙端口。运行 `docker logs 3xui` 查看首次生成的登录信息，或用 `docker exec -it 3xui x-ui` 打开管理菜单。
 
-### Docker
+镜像已包含 tc，内核模块由宿主机提供，重启后也需保持可用。官方 `docker-compose.yml` 保持原样；上面的命令用于 host 模式部署。
 
-The default `docker compose up -d` keeps using SQLite. To run with the bundled PostgreSQL service, uncomment the two `XUI_DB_*` env lines in `docker-compose.yml` and start with the profile:
+## 更新
+
+已安装本分支的脚本版本可执行：
 
 ```bash
-docker compose --profile postgres up -d
+sudo x-ui update       # 更新到本仓库最新稳定版
+sudo x-ui update-dev   # 更新到本仓库 dev-latest 开发版
 ```
 
-The image bundles Fail2ban (enabled by default) to enforce per-client **IP limits**. Fail2ban bans offenders with `iptables`, which requires the `NET_ADMIN` capability. `docker-compose.yml` already grants it via `cap_add`; if you start the container with `docker run` instead, add the capabilities yourself, otherwise bans are logged but never applied:
+两条命令按所需版本择一执行。也可在网页首页点击面板版本号更新。更新保留原数据库；从上游版本切换时，先使用上面的本仓库安装脚本安装对应版本，让程序与管理脚本一并切换到本仓库来源。
+
+Docker 更新时，在原数据目录执行：
 
 ```bash
-docker run -d --cap-add=NET_ADMIN --cap-add=NET_RAW ... ghcr.io/limit81995/3x-ui
+docker pull ghcr.io/limit81995/3x-ui:dev
+docker stop 3xui
+docker rm 3xui
 ```
 
-## Environment Variables
+然后重新执行上面的 `docker run` 命令，沿用 `db`、`cert`、`acme` 挂载目录，保留数据。
 
-| Variable | Description | Default |
-| --- | --- | --- |
-| `XUI_DB_TYPE` | Database backend: `sqlite` or `postgres` | `sqlite` |
-| `XUI_DB_DSN` | PostgreSQL connection string (when `XUI_DB_TYPE=postgres`) | — |
-| `XUI_DB_FOLDER` | Directory for the SQLite database file | `/etc/x-ui` |
-| `XUI_DB_MAX_OPEN_CONNS` | Maximum open connections (PostgreSQL pool) | — |
-| `XUI_DB_MAX_IDLE_CONNS` | Maximum idle connections (PostgreSQL pool) | — |
-| `XUI_INIT_WEB_BASE_PATH` | The initial URI path for the web panel | `/` |
-| `XUI_ENABLE_FAIL2BAN` | Enable Fail2ban-based IP-limit enforcement | `true` |
-| `XUI_LOG_LEVEL` | Log verbosity (`debug`, `info`, `warning`, `error`) | `info` |
-| `XUI_DEBUG` | Enable debug mode | `false` |
-| `XUI_TUNNEL_HEALTH_MONITOR` | Enable the tunnel health monitor (probes a URL and restarts xray after repeated failures; a restart drops all clients) | `false` |
-| `XUI_TUNNEL_HEALTH_PROXY` | Proxy the probe is sent through; point it at a local xray inbound so the probe tests the tunnel (e.g. `socks5://127.0.0.1:1080`). Empty means the probe only checks host connectivity | — |
-| `XUI_TUNNEL_HEALTH_URL` | URL probed for tunnel health | `https://www.cloudflare.com/cdn-cgi/trace` |
-| `XUI_TUNNEL_HEALTH_INTERVAL` | Interval between probes | `30s` |
-| `XUI_TUNNEL_HEALTH_TIMEOUT` | Per-probe timeout | `10s` |
-| `XUI_TUNNEL_HEALTH_FAILURES` | Consecutive failures before a restart is triggered | `3` |
-| `XUI_TUNNEL_HEALTH_COOLDOWN` | Minimum delay between consecutive restarts | `5m` |
-| `NODE_TOKEN_ENCRYPTION` | Encryption at rest for node API tokens: `off`, `migration`, or `required` (note: no `XUI_` prefix) | `off` |
-| `XUI_NODE_TOKEN_KEY_FILE` | JSON keyring (mode `0600`) holding the active key id and its base64 32-byte keys | `/etc/x-ui/node_token_key.json` |
-| `XUI_NODE_TOKEN_KEY` | A single base64 32-byte key, used only when the key file cannot be loaded | — |
+## 相比原项目增加了什么
 
-The complete list is on the [environment variables reference](https://docs.sanaei.dev/docs/reference/env-vars).
+| 扩展 | 说明 |
+| --- | --- |
+| 端口限速 | 使用 Linux tc、IFB 和 HTB 队列整形，按入站端口限制带宽，超出即时速率的报文先排队发送。 |
+| 上传、下载分别限速 | 一个 Mbps 数值分别约束两个方向；同一端口所有用户、TCP/UDP 和 IPv4/IPv6 流量共享各方向的额度。 |
+| 网页设置 | 新增、编辑入站时可设置“端口限速”，入站列表和详情显示该值。范围为整数 `0–10000`，`0` 表示不限速。 |
+| API 支持 | 新增和编辑入站接受 `speedLimit` 字段，查询接口返回该字段。 |
+| 数据库保存 | 限速配置随入站保存，重启后恢复；旧入站默认不限速。 |
+| 自动校准 | 保存后立即尝试应用，面板启动时及每分钟读取实际 tc 规则，修复被修改的速率和丢失的规则。 |
+| 自动清理 | 取消限速、禁用、删除、到期、用尽流量或更换端口后，清理不再需要的规则。 |
+| 本仓库安装与更新 | 安装、命令行更新、菜单脚本及面板版本检查使用本仓库，构建发布沿用原项目流程。 |
 
-## Supported Languages
+### 限速怎么理解
 
-The panel UI is available in 14 languages:
+设置 `20`，表示该端口所有用户**上传合计约 20 Mbps、下载合计约 20 Mbps**，两个方向分别计算，不是每个用户各 20 Mbps。
 
-English · فارسی · العربية · 中文（简体） · 中文（繁體） · Español · Русский · Українська · Türkçe · Tiếng Việt · 日本語 · Bahasa Indonesia · Português (Brasil) · Slovenčina
+`20 Mbps` 理论上约为 `2.5 MB/s`。这是带宽上限，实际下载速度还受协议开销、网络线路和对端影响，不保证达到上限。
 
-## Contributing
+### API 怎么设置
 
-Contributions are welcome. Please read the [Contributing Guide](/CONTRIBUTING.md) before opening an issue or pull request.
+在原有完整入站请求中增加字段：
 
-## A Special Thanks to
+```json
+{"speedLimit": 20}
+```
 
-- [alireza0](https://github.com/alireza0/)
+- 新增：`POST /panel/api/inbounds/add`。
+- 编辑：`POST /panel/api/inbounds/update/:id`。
+- 取消限速：传入 `"speedLimit": 0`；编辑时省略该字段也会恢复为 `0`。
 
-## Acknowledgment
+接口沿用原项目认证方式；配置了面板访问路径时，需在接口地址前加上该路径。
 
-- [Iran v2ray rules](https://github.com/chocolate4u/Iran-v2ray-rules) (License: **GPL-3.0**): _Enhanced v2ray/xray and v2ray/xray-clients routing rules with built-in Iranian domains and a focus on security and adblocking._
-- [Russia v2ray rules](https://github.com/runetfreedom/russia-v2ray-rules-dat) (License: **GPL-3.0**): _This repository contains automatically updated V2Ray routing rules based on data on blocked domains and addresses in Russia._
+### 使用条件
 
-## Community Tools
+- 限速功能仅支持 Linux，需具备 tc、上述内核模块和 `NET_ADMIN` 权限；Docker 即使关闭 Fail2ban 也需保留该权限。
+- 默认作用于有 IPv4/IPv6 默认路由的网卡；多出口可通过 `XUI_TC_INTERFACES=eth0,eth1` 指定实际承载入站流量的接口，避免重复选中同一条流量路径。
+- 同一节点上共用端口的启用入站，必须配置相同限速值；回环地址、Unix socket 和 TUN 入站不支持此设置。
+- 远端入站由实际承载流量的节点限速，主面板与节点都需升级到本分支支持该功能的版本。
+- 面板管理自己的 IFB 接口和 tc 规则，保留网卡原有根队列及其他分类规则；同一网络命名空间只运行一个限速面板。
+- 保存成功表示配置已写入数据库；实际应用失败会记录 `tc speed limit: reconciliation failed`，并在后续校准中重试。
 
-Tools and integrations built by the community around 3x-ui.
+## 维护原则
 
-- [terraform-provider-3x-ui](https://github.com/batonogov/terraform-provider-threexui) (License: **MIT**): _Manage inbounds, clients, panel settings, and Xray configuration as code with Terraform / OpenTofu._
-- [3X-UI Manager](https://github.com/yukh975/3X-UI-Manager) (License: **MIT**): _Native Android client for 3x-ui — dashboard, inbounds, clients with QR sharing, nodes and multi-panel management. Available on F-Droid._
+上游持续维护期间，保持“原项目基础 + 最小必要扩展”，减少合并冲突，不另建重复的安装、构建和发布体系；确认上游停更后再评估维护策略。具体约定见 [项目规范](.agents/skills/project-rules/SKILL.md)。
 
-## Support project
-
-**If this project is helpful to you, you may wish to give it a**:star2:
-
-<a href="https://www.buymeacoffee.com/MHSanaei" target="_blank">
-<img src="./media/default-yellow.png" alt="Buy Me A Coffee" style="height: 70px !important;width: 277px !important;" >
-</a>
-
-</br>
-<a href="https://nowpayments.io/donation/hsanaei" target="_blank" rel="noreferrer noopener">
-   <img src="./media/donation-button-black.svg" alt="Crypto donation button by NOWPayments">
-</a>
-
-## Star History
-
-<a href="https://www.star-history.com/?repos=mhsanaei%2F3x-ui&type=date&legend=top-left">
- <picture>
-   <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/chart?repos=mhsanaei/3x-ui&type=date&theme=dark&legend=top-left" />
-   <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/chart?repos=mhsanaei/3x-ui&type=date&legend=top-left" />
-   <img alt="Star History Chart" src="https://api.star-history.com/chart?repos=mhsanaei/3x-ui&type=date&legend=top-left" />
- </picture>
-</a>
-
-<p align="center">
- <a href="https://www.star-history.com/mhsanaei/3x-ui">
-  <picture><source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/badge?repo=MHSanaei/3x-ui&type=rank&theme=dark" /><source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/badge?repo=MHSanaei/3x-ui&type=rank" /><img alt="Star History Rank" src="https://api.star-history.com/badge?repo=MHSanaei/3x-ui&type=rank" /></picture> <picture><source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/badge?repo=MHSanaei/3x-ui&type=trending&theme=dark" /><source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/badge?repo=MHSanaei/3x-ui&type=trending" /><img alt="GitHub Trending Repository of the Day" src="https://api.star-history.com/badge?repo=MHSanaei/3x-ui&type=trending" /></picture>
- </a>
-</p>
+本项目沿用原项目的 [GPL-3.0 许可证](LICENSE)。
