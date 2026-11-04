@@ -670,6 +670,8 @@
         "shareAddr": "Alamat berbagi kustom",
         "shareAddrHelp": "Hanya digunakan saat strategi alamat berbagi adalah Kustom. Masukkan host atau IP tanpa skema atau port.",
         "subSortIndex": "Urutan dalam langganan",
+        "speedLimit": "Batas kecepatan port",
+        "speedLimitHelp": "Mbps per arah, dibagi oleh semua pengguna port ini untuk TCP/UDP dan IPv4/IPv6. Unggah dan unduh dibatasi secara terpisah. 0 = tanpa batas. Diterapkan setelah disimpan; aturan aktual diperiksa setiap menit.",
         "subSortIndexHelp": "Posisi tautan inbound ini dalam keluaran langganan (halaman langganan dan aplikasi klien). Nilai lebih kecil tampil lebih dulu; nilai sama mempertahankan urutan pembuatan. Tidak memengaruhi daftar inbound di panel.",
         "excludeFromSub": "Kecualikan dari langganan",
         "excludeFromSubHelp": "Sembunyikan tautan inbound ini dari keluaran langganan sambil tetap menjaga inbound tetap aktif dan beroperasi.",

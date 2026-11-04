@@ -23,6 +23,7 @@ export const StreamSettingsSchema =
 export type StreamSettings = z.infer<typeof StreamSettingsSchema>;
 
 export const InboundCoreSchema = z.object({
+  speedLimit: z.number().int().min(0).max(10000).default(0),
   id: z.number().int().optional(),
   up: z.number().int().min(0).default(0),
   down: z.number().int().min(0).default(0),

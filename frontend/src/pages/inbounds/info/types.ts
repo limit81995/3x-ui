@@ -51,6 +51,7 @@ export interface InboundInfo {
 }
 
 export interface DBInboundLike {
+  speedLimit?: number;
   id: number;
   address: string;
   port: number;

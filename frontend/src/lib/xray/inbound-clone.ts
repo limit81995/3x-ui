@@ -32,6 +32,7 @@ export function buildClonePayload(dbInbound: DBInbound, port: number, nodeId: nu
     up: 0,
     down: 0,
     total: 0,
+    speedLimit: dbInbound.speedLimit,
     remark: `${dbInbound.remark} (clone)`,
     enable: false,
     expiryTime: 0,

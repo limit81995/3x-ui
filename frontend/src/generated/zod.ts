@@ -786,6 +786,7 @@ export const InboundSchema = z.object({
   shareAddr: z.string(),
   shareAddrStrategy: z.enum(['node', 'listen', 'custom']),
   sniffing: z.unknown(),
+  speedLimit: z.number().int().min(0).max(10000),
   streamSettings: z.unknown(),
   subSortIndex: z.number().int(),
   tag: z.string(),

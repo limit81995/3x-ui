@@ -149,6 +149,29 @@ docker compose --profile postgres up -d
 docker run -d --cap-add=NET_ADMIN --cap-add=NET_RAW ... ghcr.io/mhsanaei/3x-ui
 ```
 
+### 入站端口限速（tc）
+
+新增和编辑入站时可设置“端口限速”，范围为 `0–10000 Mbps`；`0` 表示不限速。
+同一端口的所有用户及 TCP/UDP、IPv4/IPv6 流量共享额度，上传、下载各有独立额度。
+例如设置 `100`，表示上传合计最多约 100 Mbps，下载合计最多约 100 Mbps。
+这是 Linux `tc clsact + flower + police` 的报文限速，超额报文会丢弃，允许短时突发；它不是每用户限速或流量配额。
+
+配置保存在数据库中，在入站列表和详情中显示。保存后后台立即尝试应用；面板启动时及每分钟重新读取内核实际规则，修复速率变化、丢失或被修改的分类规则。
+取消限速、禁用、删除、到期、耗尽配额或更换端口后，会移除不再使用的规则。共享动作的释放可能延迟到下一次校准。
+多个启用的入站若在同一节点共用端口，即使监听地址或协议不同，也必须设置相同的限速数值。
+
+镜像已安装 `iproute2-tc`，Compose 已提供 `NET_ADMIN`。宿主机内核须支持 `sch_ingress`（clsact）、`cls_flower`、`act_police`；二进制部署需安装系统的 `iproute2`/`tc` 并提供 `CAP_NET_ADMIN`。
+默认作用于当前网络命名空间中具有 IPv4/IPv6 默认路由的接口。多出口、策略路由或其他公网接口可设置 `XUI_TC_INTERFACES=eth0,eth1`，只选择真实承载入站流量的接口，避免同一报文经过多个选中接口而重复计量。
+bridge 模式匹配容器内的监听端口，host 模式匹配宿主机端口；若前面有反向代理、隧道或端口转发，应在实际承载该端口流量的位置设置规则。
+回环和 Unix socket 入站不支持此设置，应限制其公网父入站。
+
+API 的 `POST /panel/api/inbounds/add`、`POST /panel/api/inbounds/update/:id` 接受整数 `speedLimit`，列表和详情接口返回该字段。例如在原有入站请求中添加 `"speedLimit": 100`；更新时传 `0` 或省略此字段会取消限速。
+远端入站由实际承载流量的节点执行，主面板与节点均需升级到支持此字段的版本。
+
+规则使用优先级 `48100–48103`、filter handle `0x3a00xxxx` 和 police action index `0x3a000000–0x3a01ffff`，请为本面板保留这段编号。同一个网络命名空间只应由一个面板管理这段规则。
+校准只维护这段规则，不替换现有 root qdisc；如果接口已有旧式 ingress qdisc，需先自行规划迁移为 clsact。
+应用失败会在面板日志中记录 `tc speed limit: reconciliation failed` 并自动重试；保存成功表示配置已持久化，不代表内核一定已应用。
+
 ## 环境变量
 
 | 变量 | 说明 | 默认值 |
@@ -160,6 +183,7 @@ docker run -d --cap-add=NET_ADMIN --cap-add=NET_RAW ... ghcr.io/mhsanaei/3x-ui
 | `XUI_DB_MAX_IDLE_CONNS` | 最大空闲连接数（PostgreSQL 连接池） | — |
 | `XUI_INIT_WEB_BASE_PATH` | Web 面板的初始 URI 路径 | `/` |
 | `XUI_ENABLE_FAIL2BAN` | 启用基于 Fail2ban 的 IP 限制 | `true` |
+| `XUI_TC_INTERFACES` | 端口限速接口，多个接口用逗号分隔 | IPv4/IPv6 默认路由接口 |
 | `XUI_LOG_LEVEL` | 日志级别（`debug`、`info`、`warning`、`error`） | `info` |
 | `XUI_DEBUG` | 启用调试模式 | `false` |
 | `XUI_TUNNEL_HEALTH_MONITOR` | 启用隧道健康监控（探测某个 URL，在连续多次失败后重启 xray；重启会断开所有客户端） | `false` |

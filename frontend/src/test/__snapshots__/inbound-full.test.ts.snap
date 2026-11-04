@@ -42,6 +42,7 @@ exports[`InboundSchema (full) fixtures > parses hysteria-tls byte-stably 1`] = `
     "metadataOnly": false,
     "routeOnly": false,
   },
+  "speedLimit": 0,
   "streamSettings": {
     "network": "tcp",
     "security": "tls",
@@ -130,6 +131,7 @@ exports[`InboundSchema (full) fixtures > parses masque-tls byte-stably 1`] = `
     "metadataOnly": false,
     "routeOnly": false,
   },
+  "speedLimit": 0,
   "streamSettings": {
     "masqueSettings": {
       "path": "/.well-known/masque/ip/*/*/",
@@ -219,6 +221,7 @@ exports[`InboundSchema (full) fixtures > parses shadowsocks-tcp-2022 byte-stably
     "metadataOnly": false,
     "routeOnly": false,
   },
+  "speedLimit": 0,
   "streamSettings": {
     "network": "tcp",
     "security": "none",
@@ -277,6 +280,7 @@ exports[`InboundSchema (full) fixtures > parses trojan-ws-tls byte-stably 1`] = 
     "metadataOnly": false,
     "routeOnly": false,
   },
+  "speedLimit": 0,
   "streamSettings": {
     "network": "ws",
     "security": "tls",
@@ -369,6 +373,7 @@ exports[`InboundSchema (full) fixtures > parses vless-tcp-reality byte-stably 1`
     "metadataOnly": false,
     "routeOnly": false,
   },
+  "speedLimit": 0,
   "streamSettings": {
     "network": "tcp",
     "realitySettings": {
@@ -455,6 +460,7 @@ exports[`InboundSchema (full) fixtures > parses vless-ws-tls byte-stably 1`] = `
     "metadataOnly": false,
     "routeOnly": false,
   },
+  "speedLimit": 0,
   "streamSettings": {
     "network": "ws",
     "security": "tls",
@@ -547,6 +553,7 @@ exports[`InboundSchema (full) fixtures > parses vless-ws-tls-pinned byte-stably 
     "metadataOnly": false,
     "routeOnly": false,
   },
+  "speedLimit": 0,
   "streamSettings": {
     "network": "ws",
     "security": "tls",
@@ -640,6 +647,7 @@ exports[`InboundSchema (full) fixtures > parses vmess-tcp-tls byte-stably 1`] = 
     "metadataOnly": false,
     "routeOnly": false,
   },
+  "speedLimit": 0,
   "streamSettings": {
     "network": "tcp",
     "security": "tls",
@@ -728,6 +736,7 @@ exports[`InboundSchema (full) fixtures > parses wireguard-server byte-stably 1`]
     "metadataOnly": false,
     "routeOnly": false,
   },
+  "speedLimit": 0,
   "tag": "inbound-wg-1",
   "total": 0,
   "up": 0,

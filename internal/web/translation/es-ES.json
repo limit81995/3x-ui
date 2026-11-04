@@ -721,6 +721,8 @@
         "shareAddr": "Dirección compartida personalizada",
         "shareAddrHelp": "Solo se usa cuando la estrategia de dirección para compartir es Personalizada. Introduce un host o IP sin esquema ni puerto.",
         "subSortIndex": "Orden en la suscripción",
+        "speedLimit": "Límite de velocidad del puerto",
+        "speedLimitHelp": "Mbps por dirección, compartidos por todos los usuarios del puerto en TCP/UDP e IPv4/IPv6. Subida y bajada se limitan por separado. 0 = sin límite. Se aplica al guardar; las reglas reales se comprueban cada minuto.",
         "subSortIndexHelp": "Posición de los enlaces de esta entrada en la salida de la suscripción (página de suscripción y apps cliente). Los valores más bajos van primero; con valores iguales se mantiene el orden de creación. No afecta a la lista de entradas del panel.",
         "excludeFromSub": "Excluir de las suscripciones",
         "excludeFromSubHelp": "Oculta los enlaces de esta entrada en la salida de suscripción manteniendo la entrada habilitada y operativa.",

@@ -21,6 +21,7 @@ import (
 	"github.com/mhsanaei/3x-ui/v3/internal/database/model"
 	"github.com/mhsanaei/3x-ui/v3/internal/logger"
 	"github.com/mhsanaei/3x-ui/v3/internal/mtproto"
+	"github.com/mhsanaei/3x-ui/v3/internal/tclimit"
 	"github.com/mhsanaei/3x-ui/v3/internal/tuic"
 	"github.com/mhsanaei/3x-ui/v3/internal/util/common"
 	"github.com/mhsanaei/3x-ui/v3/internal/util/maskcompat"
@@ -1296,6 +1297,9 @@ func (s *InboundService) normalizeMtprotoXrayPort(inbound *model.Inbound, oldSet
 // Returns the created inbound, whether Xray needs restart, and any error.
 func (s *InboundService) AddInbound(inbound *model.Inbound) (*model.Inbound, bool, error) {
 	defer InvalidateSubData()
+	if err := validateInboundSpeedLimit(inbound); err != nil {
+		return inbound, false, err
+	}
 	inbound.Id = 0
 	if err := normalizeVlessFallbacks(inbound); err != nil {
 		return nil, false, err
@@ -1628,6 +1632,7 @@ func (s *InboundService) AddInbound(inbound *model.Inbound) (*model.Inbound, boo
 		needRestart = true
 	}
 
+	tclimit.Notify()
 	return inbound, needRestart, err
 }
 
@@ -1722,6 +1727,7 @@ func (s *InboundService) delInbound(id int) (bool, func(), error) {
 		}
 	}
 	// Drop the egress SOCKS bridge a routed mtproto inbound left in the config.
+	tclimit.Notify()
 	if mtprotoRoutesThroughXray(&ib) {
 		needRestart = true
 	}
@@ -1899,6 +1905,11 @@ func (s *InboundService) SetInboundEnable(id int, enable bool) (bool, error) {
 	if inbound.Enable == enable {
 		return false, nil
 	}
+	if enable {
+		if err := validateInboundSpeedLimit(inbound); err != nil {
+			return false, err
+		}
+	}
 
 	db := database.GetDB()
 	// Enabling puts this row's ports into the running config, and the guards ran
@@ -1912,7 +1923,14 @@ func (s *InboundService) SetInboundEnable(id int, enable bool) (bool, error) {
 			return false, common.NewError(conflict.String())
 		}
 	}
-	if err := db.Transaction(func(tx *gorm.DB) error {
+	if err := runSerializedTx(func(tx *gorm.DB) error {
+		if enable {
+			candidate := *inbound
+			candidate.Enable = true
+			if err := checkInboundSpeedLimitTx(tx, &candidate, inbound.Id); err != nil {
+				return err
+			}
+		}
 		if err := tx.Model(model.Inbound{}).Where("id = ?", id).
 			Update("enable", enable).Error; err != nil {
 			return err
@@ -1925,6 +1943,7 @@ func (s *InboundService) SetInboundEnable(id int, enable bool) (bool, error) {
 		return false, err
 	}
 	inbound.Enable = enable
+	tclimit.Notify()
 
 	needRestart := false
 	rt, push, _, perr := s.nodePushPlan(inbound)
@@ -2058,6 +2077,9 @@ func (s *InboundService) UpdateInbound(inbound *model.Inbound) (*model.Inbound, 
 	// Restore the stored NodeID before any host-scoped check so a node inbound
 	// stays scoped to its own node (the payload's nodeId is unreliable, often absent).
 	inbound.NodeID = oldInbound.NodeID
+	if err := validateInboundSpeedLimit(inbound); err != nil {
+		return inbound, false, err
+	}
 	if err := normalizeVlessFallbacks(inbound); err != nil {
 		return nil, false, err
 	}
@@ -2231,6 +2253,7 @@ func (s *InboundService) UpdateInbound(inbound *model.Inbound) (*model.Inbound, 
 		}
 
 		oldInbound.Total = inbound.Total
+		oldInbound.SpeedLimit = inbound.SpeedLimit
 		oldInbound.Remark = inbound.Remark
 		oldInbound.SubSortIndex = inbound.SubSortIndex
 		oldInbound.ExcludeFromSub = inbound.ExcludeFromSub
@@ -2396,6 +2419,7 @@ func (s *InboundService) UpdateInbound(inbound *model.Inbound) (*model.Inbound, 
 			needRestart = true
 		}
 	}
+	tclimit.Notify()
 	return inbound, needRestart, nil
 }
 

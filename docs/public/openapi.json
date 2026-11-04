@@ -3199,7 +3199,6 @@
             "type": "integer"
           },
           "listen": {
-            "description": "Xray configuration fields",
             "type": "string"
           },
           "nodeId": {
@@ -3254,6 +3253,13 @@
             "type": "string"
           },
           "sniffing": {},
+          "speedLimit": {
+            "description": "Xray configuration fields\nPort-wide Mbps cap in each direction; 0 disables tc policing",
+            "example": 0,
+            "maximum": 10000,
+            "minimum": 0,
+            "type": "integer"
+          },
           "streamSettings": {},
           "subSortIndex": {
             "description": "Sort order of this inbound's links in subscription output only (lower first; negatives allowed; 0/omitted → 1; ties by id)",
@@ -3310,6 +3316,7 @@
           "shareAddr",
           "shareAddrStrategy",
           "sniffing",
+          "speedLimit",
           "streamSettings",
           "subSortIndex",
           "tag",
@@ -5389,6 +5396,7 @@
                       "shareAddr": "",
                       "shareAddrStrategy": "node",
                       "sniffing": null,
+                      "speedLimit": 0,
                       "streamSettings": null,
                       "subSortIndex": 1,
                       "tag": "in-443-tcp",
@@ -5651,7 +5659,7 @@
         "tags": [
           "Inbounds"
         ],
-        "summary": "Create a new inbound. Send the full inbound payload (protocol, port, settings, streamSettings, sniffing, remark, expiryTime, total, enable). settings, streamSettings, and sniffing may be sent as nested JSON objects (preferred) or as JSON-encoded strings (legacy). VLESS empty fallback arrays are normalized away; nonempty fallbacks cannot be combined with active server decryption.",
+        "summary": "Create a new inbound. Send the full inbound payload (protocol, port, settings, streamSettings, sniffing, remark, expiryTime, total, enable, speedLimit). speedLimit is an integer from 0 to 10000 Mbps: upload and download are independently capped at this rate, shared by all traffic on the port; 0 disables the cap. Linux tc rules are applied after commit and reconciled every minute. settings, streamSettings, and sniffing may be sent as nested JSON objects (preferred) or as JSON-encoded strings (legacy). VLESS empty fallback arrays are normalized away; nonempty fallbacks cannot be combined with active server decryption.",
         "operationId": "post_panel_api_inbounds_add",
         "requestBody": {
           "required": true,
@@ -5665,6 +5673,7 @@
                 "remark": "VLESS-443",
                 "listen": "",
                 "port": 443,
+                "speedLimit": 100,
                 "protocol": "vless",
                 "expiryTime": 0,
                 "total": 0,
@@ -5846,7 +5855,7 @@
         "tags": [
           "Inbounds"
         ],
-        "summary": "Replace an inbound’s configuration. Body shape mirrors /add, but the inbound keeps its stored client list and enable flag: settings.clients and enable in the body are ignored. Manage clients through the /panel/api/clients endpoints and toggle the inbound with /setEnable. Remove effective fallback rules before enabling VLESS server decryption.",
+        "summary": "Replace an inbound’s configuration. Body shape mirrors /add, including speedLimit (0 clears the port cap; omitted defaults to 0), but the inbound keeps its stored client list and enable flag: settings.clients and enable in the body are ignored. Manage clients through the /panel/api/clients endpoints and toggle the inbound with /setEnable. Remove effective fallback rules before enabling VLESS server decryption.",
         "operationId": "post_panel_api_inbounds_update_id",
         "parameters": [
           {
@@ -5871,6 +5880,7 @@
                 "remark": "VLESS-443",
                 "listen": "",
                 "port": 443,
+                "speedLimit": 100,
                 "protocol": "vless",
                 "expiryTime": 0,
                 "total": 0,
@@ -16800,6 +16810,7 @@
                   "shareAddr": "",
                   "shareAddrStrategy": "node",
                   "sniffing": null,
+                  "speedLimit": 0,
                   "streamSettings": null,
                   "subSortIndex": 1,
                   "tag": "in-443-tcp",

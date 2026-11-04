@@ -723,6 +723,8 @@
         "shareAddr": "Vlastná adresa pre odkazy",
         "shareAddrHelp": "Použije sa iba pri voľbe Vlastné. Zadajte názov hostiteľa alebo IP bez protokolu a portu.",
         "subSortIndex": "Poradie v odbere konfigurácií",
+        "speedLimit": "Rýchlostný limit portu",
+        "speedLimitHelp": "Mbps pre každý smer, spoločne pre všetkých používateľov portu cez TCP/UDP a IPv4/IPv6. Odosielanie a sťahovanie sa obmedzujú samostatne. 0 = bez obmedzenia. Použije sa po uložení; skutočné pravidlá sa kontrolujú každú minútu.",
         "subSortIndexHelp": "Poradie odkazov tohto vstupu v odbere (klientska stránka a aplikácie). Nižšie hodnoty sa zobrazia skôr. Pri rovnakých hodnotách sa zachová poradie vytvorenia. Zoznam vstupov v paneli sa nemení.",
         "excludeFromSub": "Vynechať z odberu konfigurácií",
         "excludeFromSubHelp": "Skryť odkazy tohto vstupu v odbere konfigurácií. Vstup zostane zapnutý a funkčný.",

@@ -758,6 +758,15 @@ export default function InboundFormModal({
         <InputNumber min={isUdsListen ? 0 : 1} max={65535} />
       </FormField>
 
+      <FormField
+        name="speedLimit"
+        label={t('pages.inbounds.form.speedLimit')}
+        tooltip={t('pages.inbounds.form.speedLimitHelp')}
+        rules={{ validate: rhfZodValidate(InboundDbFieldsSchema.shape.speedLimit) }}
+      >
+        <InputNumber min={0} max={10000} precision={0} addonAfter="Mbps" />
+      </FormField>
+
       <Form.Item
         htmlFor={`${uid}-totalFlow`}
         label={t('pages.inbounds.totalFlow')}

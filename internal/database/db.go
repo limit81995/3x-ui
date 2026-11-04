@@ -123,6 +123,11 @@ func migrateClientKeepAliveRangeColumn() error {
 }
 
 func initModels() error {
+	if db.Migrator().HasTable(&model.Inbound{}) && !db.Migrator().HasColumn(&model.Inbound{}, "speed_limit") {
+		if err := db.Migrator().AddColumn(&model.Inbound{}, "SpeedLimit"); err != nil {
+			return err
+		}
+	}
 	if err := migrateClientKeepAliveRangeColumn(); err != nil {
 		return err
 	}

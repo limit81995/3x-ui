@@ -28,6 +28,10 @@ services:
     environment:
       XRAY_VMESS_AEAD_FORCED: "false"
       XUI_ENABLE_FAIL2BAN: "true"
+      # Port speed limits require NET_ADMIN and Linux clsact/flower/police.
+      # By default, tc uses interfaces with an IPv4/IPv6 default route.
+      # Set this for policy routing or additional public-facing interfaces.
+      # XUI_TC_INTERFACES: "eth0"
       # Memory tuning. The panel keeps RAM low via GOGC + periodic release; it no
       # longer sets a soft limit from total host RAM (no benefit, risks GC thrash).
       # XUI_GOGC: "75"              # lower = less RAM, slightly more CPU; GOGC env overrides

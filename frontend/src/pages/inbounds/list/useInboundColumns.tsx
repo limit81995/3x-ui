@@ -210,6 +210,15 @@ export function useInboundColumns({
         sorter: (a, b) => a.port - b.port,
       },
       {
+        title: t('pages.inbounds.form.speedLimit'),
+        dataIndex: 'speedLimit',
+        key: 'speedLimit',
+        align: 'center',
+        width: 125,
+        sorter: (a, b) => (a.speedLimit ?? 0) - (b.speedLimit ?? 0),
+        render: (value: number) => (value > 0 ? `${value} Mbps` : t('unlimited')),
+      },
+      {
         title: t('pages.inbounds.protocol'),
         key: 'protocol',
         align: 'left',
