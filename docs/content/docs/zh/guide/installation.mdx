@@ -1,6 +1,6 @@
 ---
 title: 安装
-description: 通过官方脚本（稳定版、指定版本或开发最新版）、无人值守 / cloud-init 或 Docker 安装 3x-ui，并选择 SQLite 或 PostgreSQL。
+description: 通过本仓库脚本（稳定版、指定版本或开发版）、无人值守 / cloud-init 或 Docker 安装 3x-ui，并选择 SQLite 或 PostgreSQL。
 icon: Download
 ---
 
@@ -18,24 +18,25 @@ Virtuozzo、Arch、Manjaro、openSUSE（Tumbleweed/Leap）、Alpine——以及 
 
 <Tab value="Script">
 
-官方脚本是推荐的安装方式。安装过程中，它会生成一个**随机**的用户名、密码和访问（Web 根）路径，配置服务，
+本仓库脚本支持在线安装。安装过程中，它会生成一个**随机**的用户名、密码和访问（Web 根）路径，配置服务，
 并安装 `x-ui` 管理命令。
 
+以下命令要求 `limit81995/3x-ui` 已发布对应版本和架构的安装包。仅推送源码不会产生安装包；尚未发布时，请按仓库中文 README 中的原生构建流程生成并安装本地包。
+
 ```bash title="latest stable"
-bash <(curl -Ls https://raw.githubusercontent.com/mhsanaei/3x-ui/master/install.sh)
+bash <(curl -Ls https://raw.githubusercontent.com/limit81995/3x-ui/dev/install.sh)
 ```
 
 在命令后附加标签即可安装**指定版本**：
 
 ```bash title="pinned version"
-bash <(curl -Ls https://raw.githubusercontent.com/mhsanaei/3x-ui/master/install.sh) v3.4.0
+bash <(curl -Ls https://raw.githubusercontent.com/limit81995/3x-ui/dev/install.sh) v3.4.0
 ```
 
-传入 `dev-latest` 可安装滚动更新的**开发版**构建（来自 `main` 的最新逐提交预发布版本
-——并非稳定版）：
+本仓库发布 `dev-latest` 后，传入该标签可安装**开发版**预发布构建：
 
 ```bash title="rolling dev build"
-bash <(curl -Ls https://raw.githubusercontent.com/mhsanaei/3x-ui/master/install.sh) dev-latest
+bash <(curl -Ls https://raw.githubusercontent.com/limit81995/3x-ui/dev/install.sh) dev-latest
 ```
 
 安装完成后，记下打印出的登录信息并运行 `x-ui` 打开
@@ -60,7 +61,7 @@ docker compose up -d
 docker compose --profile postgres up -d
 ```
 
-更想用预构建镜像？它已发布到 GitHub Container Registry。该镜像内置了 Fail2ban（用于
+需要使用预构建镜像时，请先通过本仓库的 Docker 发布工作流发布到 GitHub Container Registry。该镜像内置了 Fail2ban（用于
 [IP 限制](/docs/operations/security)），其封禁通过 `iptables` 实现，因此需要 `NET_ADMIN`
 （IPv6 还需 `NET_RAW`）——
 否则封禁只会被记录，而不会实际生效：
@@ -75,7 +76,7 @@ docker run -d \
   --network=host \
   --restart=unless-stopped \
   --name 3x-ui \
-  ghcr.io/mhsanaei/3x-ui:latest
+  ghcr.io/limit81995/3x-ui:latest
 ```
 
 `db/` 卷保存 SQLite 数据库（`/etc/x-ui/x-ui.db`），`cert/`
@@ -85,7 +86,7 @@ docker run -d \
 
 <Tab value="Manual">
 
-高级用户可从[发布页面](https://github.com/MHSanaei/3x-ui/releases)
+高级用户可从[发布页面](https://github.com/limit81995/3x-ui/releases)
 下载适用于你架构的发布归档包，解压后
 将二进制文件作为 systemd 服务运行。安装脚本正是将这些步骤自动化，
 因此除非你有特定理由要手动安装，否则更推荐使用脚本。
@@ -118,10 +119,10 @@ docker run -d \
 `/etc/x-ui/install-result.env`：
 
 ```bash
-XUI_NONINTERACTIVE=1 bash <(curl -Ls https://raw.githubusercontent.com/mhsanaei/3x-ui/master/install.sh)
+XUI_NONINTERACTIVE=1 bash <(curl -Ls https://raw.githubusercontent.com/limit81995/3x-ui/dev/install.sh)
 ```
 
-仓库的 [`deploy/`](https://github.com/MHSanaei/3x-ui/tree/main/deploy)
+仓库的 [`deploy/`](https://github.com/limit81995/3x-ui/tree/dev/deploy)
 目录提供了现成的 **cloud-init** user-data，可用于在任意云平台上进行无人值守安装
 （Hetzner、AWS、DigitalOcean、Vultr、GCP、Azure、Oracle）。
 

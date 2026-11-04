@@ -8,10 +8,10 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/MHSanaei/3x-ui/releases"><img src="https://img.shields.io/github/v/release/mhsanaei/3x-ui" alt="Release"></a>
+  <a href="https://github.com/limit81995/3x-ui/releases"><img src="https://img.shields.io/github/v/release/limit81995/3x-ui" alt="Release"></a>
   <a href="https://github.com/MHSanaei/3x-ui/actions"><img src="https://img.shields.io/github/actions/workflow/status/mhsanaei/3x-ui/release.yml.svg" alt="Build"></a>
   <a href="#"><img src="https://img.shields.io/github/go-mod/go-version/mhsanaei/3x-ui.svg" alt="GO Version"></a>
-  <a href="https://github.com/MHSanaei/3x-ui/releases/latest"><img src="https://img.shields.io/github/downloads/mhsanaei/3x-ui/total.svg" alt="Downloads"></a>
+  <a href="https://github.com/limit81995/3x-ui/releases/latest"><img src="https://img.shields.io/github/downloads/limit81995/3x-ui/total.svg" alt="Downloads"></a>
   <a href="https://www.gnu.org/licenses/gpl-3.0.en.html"><img src="https://img.shields.io/badge/license-GPL%20V3-blue.svg?longCache=true" alt="License"></a>
   <a href="https://pkg.go.dev/github.com/mhsanaei/3x-ui/v3"><img src="https://pkg.go.dev/badge/github.com/mhsanaei/3x-ui/v3.svg" alt="Go Reference"></a>
   <a href="https://docs.sanaei.dev"><img src="https://img.shields.io/badge/docs-docs.sanaei.dev-22d3ee" alt="Documentation"></a>
@@ -123,28 +123,30 @@ sudo env XUI_INSTALL_ARCHIVE="$PWD/x-ui-linux-amd64.tar.gz" bash ./install.sh
 
 **3. 后续升级或使用 Release 安装**
 
-升级时，从更新后的源码重新构建（或获取本分支的新安装包），再执行同样的本地包安装命令，保留原数据库。原有管理菜单/面板的在线更新入口仍跟随上游，使用它们会换回上游程序。
+升级时，从更新后的源码重新构建（或获取本分支的新安装包），再执行同样的本地包安装命令，保留原数据库。安装、命令行更新、菜单脚本更新和面板版本检查现在统一使用本仓库 `limit81995/3x-ui`。
+
+本仓库发布对应 Release 后，原生安装可执行 `sudo x-ui update` 更新到本仓库最新稳定版，或执行 `sudo x-ui update-dev` 更新到本仓库的 `dev-latest`。网页首页点击面板版本号后也可更新。旧安装需要先通过配套本地包升级程序和菜单脚本，才能使用新的更新源。Docker 安装通过新镜像重建容器升级，沿用原数据挂载。
 
 若要通过远程脚本下载程序，需先在指定仓库发布包含本分支代码和对应架构安装包、校验文件的 Release。远程安装源由 `XUI_RELEASE_REPO` 指定，默认 `limit81995/3x-ui`；`dev-latest` 的脚本分支默认 `dev`，可用 `XUI_RELEASE_REF` 覆盖。这里的 `dev-latest` 是 Release 标签，不表示脚本会拉取 `dev` 源码编译。本地包安装不依赖发布 Release。
 
-### 上游版本安装
+### 本仓库在线安装
 
-以下命令安装 `mhsanaei/3x-ui` 的上游版本，不包含本分支的 HTB 改动。需要端口限速时，请使用上面的本分支安装流程。
+以下命令从 `limit81995/3x-ui` 下载。使用前须先发布包含本分支代码和目标架构安装包的 Release；如果对应版本不存在，会报错，不会回退到上游。尚未发布时使用上面的本地包安装流程。
 
 ```bash
-bash <(curl -Ls https://raw.githubusercontent.com/mhsanaei/3x-ui/master/install.sh)
+bash <(curl -Ls https://raw.githubusercontent.com/limit81995/3x-ui/dev/install.sh)
 ```
 
-若要安装特定版本，请在命令后附加对应的标签（例如 `v3.7.0`）：
+若要安装特定版本，请附加本仓库已发布的标签（以下 `v3.7.0` 仅为示例）：
 
 ```bash
-bash <(curl -Ls https://raw.githubusercontent.com/mhsanaei/3x-ui/master/install.sh) v3.7.0
+bash <(curl -Ls https://raw.githubusercontent.com/limit81995/3x-ui/dev/install.sh) v3.7.0
 ```
 
-若要安装上游滚动更新的 **dev** 版本（来自上游 `main` 的最新逐次提交预发布版本，而非本仓库的 `dev` 分支），请传入 `dev-latest`：
+若本仓库已发布开发版 `dev-latest`，可传入该标签安装：
 
 ```bash
-bash <(curl -Ls https://raw.githubusercontent.com/mhsanaei/3x-ui/master/install.sh) dev-latest
+bash <(curl -Ls https://raw.githubusercontent.com/limit81995/3x-ui/dev/install.sh) dev-latest
 ```
 
 安装过程中会生成随机的用户名、密码和访问路径。安装完成后，运行 `x-ui` 打开管理菜单，您可以在其中启动/停止服务、查看或重置登录凭据、管理 SSL 证书等。
@@ -204,7 +206,7 @@ docker compose --profile postgres up -d
 该镜像捆绑了 Fail2ban（默认启用），用于强制执行按客户端的 **IP 限制**。Fail2ban 使用 `iptables` 封禁违规者，这需要 `NET_ADMIN` 权限。`docker-compose.yml` 已通过 `cap_add` 授予该权限；如果您改用 `docker run` 启动容器，请自行添加这些权限，否则封禁只会被记录而永远不会生效：
 
 ```bash
-docker run -d --cap-add=NET_ADMIN --cap-add=NET_RAW ... ghcr.io/mhsanaei/3x-ui
+docker run -d --cap-add=NET_ADMIN --cap-add=NET_RAW ... ghcr.io/limit81995/3x-ui
 ```
 
 ### 入站端口限速（tc）
@@ -242,6 +244,8 @@ API 的 `POST /panel/api/inbounds/add`、`POST /panel/api/inbounds/update/:id` �
 | `XUI_INIT_WEB_BASE_PATH` | Web 面板的初始 URI 路径 | `/` |
 | `XUI_ENABLE_FAIL2BAN` | 启用基于 Fail2ban 的 IP 限制 | `true` |
 | `XUI_TC_INTERFACES` | 端口限速接口，多个接口用逗号分隔 | IPv4/IPv6 默认路由接口 |
+| `XUI_RELEASE_REPO` | 安装与更新源仓库；修改时需同时配置命令行环境和面板服务环境 | `limit81995/3x-ui` |
+| `XUI_RELEASE_REF` | 安装/更新脚本及开发版辅助文件所在分支或标签；稳定版辅助文件仍取对应版本标签 | `dev` |
 | `XUI_LOG_LEVEL` | 日志级别（`debug`、`info`、`warning`、`error`） | `info` |
 | `XUI_DEBUG` | 启用调试模式 | `false` |
 | `XUI_TUNNEL_HEALTH_MONITOR` | 启用隧道健康监控（探测某个 URL，在连续多次失败后重启 xray；重启会断开所有客户端） | `false` |

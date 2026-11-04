@@ -158,7 +158,7 @@
       "latestPanelVersion": "Latest panel version",
       "panelUpToDate": "Panel is up to date",
       "devChannel": "Dev channel",
-      "devChannelWarning": "Dev builds track every commit on main and aren't stable releases — there is no automatic downgrade.",
+      "devChannelWarning": "Dev builds use the configured repository's dev-latest release. These are not stable releases, and there is no automatic downgrade.",
       "currentCommit": "Current commit",
       "latestCommit": "Latest commit",
       "updateChannelChanged": "Update channel changed",

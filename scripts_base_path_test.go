@@ -113,7 +113,9 @@ red= green= yellow= blue= plain=
 xui_folder=$TEST_SETTINGS_DIR
 xui_service=$TEST_SETTINGS_DIR
 tag_version=test
-script_ref=main
+script_ref=dev
+XUI_RELEASE_REPO=limit81995/3x-ui
+XUI_RELEASE_REF=dev
 NONINTERACTIVE=1
 release=ubuntu
 SSL_SCHEME=https

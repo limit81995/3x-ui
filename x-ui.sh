@@ -6,6 +6,18 @@ blue='\033[0;34m'
 yellow='\033[0;33m'
 plain='\033[0m'
 
+# Keep installers, menu downloads and child updater processes on the same fork.
+export XUI_RELEASE_REPO="${XUI_RELEASE_REPO:-limit81995/3x-ui}"
+export XUI_RELEASE_REF="${XUI_RELEASE_REF:-dev}"
+if [[ ! "$XUI_RELEASE_REPO" =~ ^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$ ]]; then
+    echo "XUI_RELEASE_REPO must be owner/repository" >&2
+    exit 1
+fi
+if [[ ! "$XUI_RELEASE_REF" =~ ^[A-Za-z0-9][A-Za-z0-9._/-]*$ || "$XUI_RELEASE_REF" == *..* ]]; then
+    echo "XUI_RELEASE_REF must be a branch or tag name" >&2
+    exit 1
+fi
+
 #Add some basic function here
 function LOGD() {
     echo -e "${yellow}[DEG] $* ${plain}"
@@ -128,14 +140,30 @@ before_show_menu() {
     show_menu
 }
 
+run_repo_script() {
+    local name="$1" script status
+    shift
+    script=$(mktemp) || return 1
+    if ! curl -fLsS "https://raw.githubusercontent.com/${XUI_RELEASE_REPO}/${XUI_RELEASE_REF}/${name}" -o "$script" || [[ ! -s "$script" ]]; then
+        rm -f "$script"
+        LOGE "Failed to download ${name} from ${XUI_RELEASE_REPO} (${XUI_RELEASE_REF})"
+        return 1
+    fi
+    bash "$script" "$@"
+    status=$?
+    rm -f "$script"
+    return "$status"
+}
+
 install() {
-    bash <(curl -Ls https://raw.githubusercontent.com/MHSanaei/3x-ui/main/install.sh)
-    if [[ $? == 0 ]]; then
+    if run_repo_script install.sh; then
         if [[ $# == 0 ]]; then
             start
         else
             start 0
         fi
+    else
+        return 1
     fi
 }
 
@@ -148,10 +176,11 @@ update() {
         fi
         return 0
     fi
-    bash <(curl -Ls https://raw.githubusercontent.com/MHSanaei/3x-ui/main/update.sh)
-    if [[ $? == 0 ]]; then
+    if run_repo_script update.sh; then
         LOGI "Update is complete, Panel has automatically restarted "
         before_show_menu
+    else
+        return 1
     fi
 }
 
@@ -166,10 +195,11 @@ update_dev() {
     fi
     # XUI_UPDATE_TAG tells update.sh to install the dev-latest pre-release
     # instead of the latest stable tag.
-    XUI_UPDATE_TAG="dev-latest" bash <(curl -Ls https://raw.githubusercontent.com/MHSanaei/3x-ui/main/update.sh)
-    if [[ $? == 0 ]]; then
+    if XUI_UPDATE_TAG="dev-latest" run_repo_script update.sh; then
         LOGI "Dev update is complete, Panel has automatically restarted "
         before_show_menu
+    else
+        return 1
     fi
 }
 
@@ -209,15 +239,15 @@ replace_xui_script() {
 }
 
 # The menu must match the installed panel, so update it from that release's
-# tag; fall back to main only when no script is published for the version.
+# tag; fall back to XUI_RELEASE_REF when no script is published for the version.
 installed_script_url() {
     local ver
     ver=$("${xui_folder}/x-ui" -v 2> /dev/null | tr -d '[:space:]')
-    if [[ "$ver" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] && curl -fsIL -o /dev/null "https://raw.githubusercontent.com/MHSanaei/3x-ui/v${ver}/x-ui.sh"; then
-        echo "https://raw.githubusercontent.com/MHSanaei/3x-ui/v${ver}/x-ui.sh"
+    if [[ "$ver" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] && curl -fsIL -o /dev/null "https://raw.githubusercontent.com/${XUI_RELEASE_REPO}/v${ver}/x-ui.sh"; then
+        echo "https://raw.githubusercontent.com/${XUI_RELEASE_REPO}/v${ver}/x-ui.sh"
     else
-        echo -e "${yellow}No x-ui.sh published for the installed version (${ver:-unknown}), using main${plain}" >&2
-        echo "https://raw.githubusercontent.com/MHSanaei/3x-ui/main/x-ui.sh"
+        echo -e "${yellow}No x-ui.sh published for the installed version (${ver:-unknown}), using ${XUI_RELEASE_REF}${plain}" >&2
+        echo "https://raw.githubusercontent.com/${XUI_RELEASE_REPO}/${XUI_RELEASE_REF}/x-ui.sh"
     fi
 }
 
@@ -251,10 +281,13 @@ legacy_version() {
         exit 1
     fi
     # Use the entered panel version in the download link
-    install_command="bash <(curl -Ls "https://raw.githubusercontent.com/mhsanaei/3x-ui/v$tag_version/install.sh") v$tag_version"
-
-    echo "Downloading and installing panel version $tag_version..."
-    eval $install_command
+    tag_version="${tag_version#v}"
+    if [[ ! "$tag_version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+        LOGE "Enter a version such as 3.7.0"
+        return 1
+    fi
+    echo "Downloading and installing panel version $tag_version from ${XUI_RELEASE_REPO}..."
+    run_repo_script install.sh "v${tag_version}"
 }
 
 # Function to handle the deletion of the script file
@@ -322,7 +355,7 @@ uninstall() {
     echo ""
     echo -e "Uninstalled Successfully.\n"
     echo "If you need to install this panel again, you can use below command:"
-    echo -e "${green}bash <(curl -Ls https://raw.githubusercontent.com/mhsanaei/3x-ui/master/install.sh)${plain}"
+    echo -e "${green}bash <(curl -Ls https://raw.githubusercontent.com/${XUI_RELEASE_REPO}/${XUI_RELEASE_REF}/install.sh)${plain}"
     echo ""
     # Trap the SIGTERM signal
     trap delete_script SIGTERM

@@ -8,10 +8,10 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/MHSanaei/3x-ui/releases"><img src="https://img.shields.io/github/v/release/mhsanaei/3x-ui" alt="Release"></a>
+  <a href="https://github.com/limit81995/3x-ui/releases"><img src="https://img.shields.io/github/v/release/limit81995/3x-ui" alt="Release"></a>
   <a href="https://github.com/MHSanaei/3x-ui/actions"><img src="https://img.shields.io/github/actions/workflow/status/mhsanaei/3x-ui/release.yml.svg" alt="Build"></a>
   <a href="#"><img src="https://img.shields.io/github/go-mod/go-version/mhsanaei/3x-ui.svg" alt="GO Version"></a>
-  <a href="https://github.com/MHSanaei/3x-ui/releases/latest"><img src="https://img.shields.io/github/downloads/mhsanaei/3x-ui/total.svg" alt="Downloads"></a>
+  <a href="https://github.com/limit81995/3x-ui/releases/latest"><img src="https://img.shields.io/github/downloads/limit81995/3x-ui/total.svg" alt="Downloads"></a>
   <a href="https://www.gnu.org/licenses/gpl-3.0.en.html"><img src="https://img.shields.io/badge/license-GPL%20V3-blue.svg?longCache=true" alt="License"></a>
   <a href="https://pkg.go.dev/github.com/mhsanaei/3x-ui/v3"><img src="https://pkg.go.dev/badge/github.com/mhsanaei/3x-ui/v3.svg" alt="Go Reference"></a>
   <a href="https://docs.sanaei.dev"><img src="https://img.shields.io/badge/docs-docs.sanaei.dev-22d3ee" alt="Documentation"></a>
@@ -75,25 +75,27 @@ Built as an enhanced fork of the original X-UI project, 3X-UI adds broader proto
 
 This fork's `dev` branch adds HTB port speed limits. `install.sh` installs prebuilt binaries; it does not compile source. For a native installation without Docker, build this checkout with `bash scripts/build-native.sh`, then install its archive using `XUI_INSTALL_ARCHIVE`. If you already have a matching package, skip the build; the target server does not need Go or Node.js. See the [native build and installation guide (中文)](README.zh_CN.md#htb-分支原生安装不使用-docker) for prerequisites and commands.
 
-Pushing to `dev` does not automatically publish a Release. The commands below install upstream binaries and do not include this fork's HTB changes.
+The installer, CLI updater and panel update checker default to `limit81995/3x-ui`, with scripts from `dev`. Online installation and updates require matching Release assets in this repository; pushing to `dev` does not automatically publish them. Missing releases fail without falling back to upstream. To use another source explicitly, set `XUI_RELEASE_REPO=owner/repository` and `XUI_RELEASE_REF=branch-or-tag` for both the CLI and panel service.
 
 ```bash
-bash <(curl -Ls https://raw.githubusercontent.com/mhsanaei/3x-ui/master/install.sh)
+bash <(curl -Ls https://raw.githubusercontent.com/limit81995/3x-ui/dev/install.sh)
 ```
 
-To install a specific version, append its tag (e.g. `v3.7.0`):
+To install a specific version published in this repository, append its tag (e.g. `v3.7.0`, if published):
 
 ```bash
-bash <(curl -Ls https://raw.githubusercontent.com/mhsanaei/3x-ui/master/install.sh) v3.7.0
+bash <(curl -Ls https://raw.githubusercontent.com/limit81995/3x-ui/dev/install.sh) v3.7.0
 ```
 
-To install the rolling **dev** build (latest per-commit pre-release from `main`, not a stable release), pass `dev-latest`:
+To install this repository's **dev** pre-release, publish its `dev-latest` Release first, then pass `dev-latest`:
 
 ```bash
-bash <(curl -Ls https://raw.githubusercontent.com/mhsanaei/3x-ui/master/install.sh) dev-latest
+bash <(curl -Ls https://raw.githubusercontent.com/limit81995/3x-ui/dev/install.sh) dev-latest
 ```
 
 During installation a random username, password, and access path are generated. After installation, run `x-ui` to open the management menu, where you can start/stop the service, view or reset your login credentials, manage SSL certificates, and more.
+
+For native installations, `sudo x-ui update` installs this repository's latest stable release; `sudo x-ui update-dev` installs its `dev-latest` release. The panel's update button uses the same repository. Existing installations need this version of both the binary and CLI script first; upgrade them with a matching local package as described in the native guide. Docker installations are updated by recreating the container with a new image and the existing data mounts.
 
 Every release asset is published with a `.sha256` sum next to it. Both `install.sh` and the updater verify the archive against that sum and abort on a mismatch.
 
@@ -150,7 +152,7 @@ docker compose --profile postgres up -d
 The image bundles Fail2ban (enabled by default) to enforce per-client **IP limits**. Fail2ban bans offenders with `iptables`, which requires the `NET_ADMIN` capability. `docker-compose.yml` already grants it via `cap_add`; if you start the container with `docker run` instead, add the capabilities yourself, otherwise bans are logged but never applied:
 
 ```bash
-docker run -d --cap-add=NET_ADMIN --cap-add=NET_RAW ... ghcr.io/mhsanaei/3x-ui
+docker run -d --cap-add=NET_ADMIN --cap-add=NET_RAW ... ghcr.io/limit81995/3x-ui
 ```
 
 ## Environment Variables
