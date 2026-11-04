@@ -21,7 +21,7 @@ Virtuozzo、Arch、Manjaro、openSUSE（Tumbleweed/Leap）、Alpine——以及 
 本仓库脚本支持在线安装。安装过程中，它会生成一个**随机**的用户名、密码和访问（Web 根）路径，配置服务，
 并安装 `x-ui` 管理命令。
 
-以下命令要求 `limit81995/3x-ui` 已发布对应版本和架构的安装包。仅推送源码不会产生安装包；尚未发布时，请按仓库中文 README 中的原生构建流程生成并安装本地包。
+以下命令要求 `limit81995/3x-ui` 已发布包含扩展代码及对应架构安装包的 Release。构建和发布沿用仓库的 `.github/workflows/release.yml`；仅推送源码到 `dev` 不会自动发布安装包，目标服务器无需自行编译。
 
 ```bash title="latest stable"
 bash <(curl -Ls https://raw.githubusercontent.com/limit81995/3x-ui/dev/install.sh)

@@ -1,0 +1,4 @@
+interface:
+  display_name: "项目规范"
+  short_description: "保持与上游对齐，仅保留必要扩展，安装与更新使用当前仓库"
+  default_prompt: "使用 $project-rules 按上游基础加最小必要扩展的原则处理当前项目变更。"

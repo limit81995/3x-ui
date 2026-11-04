@@ -73,7 +73,7 @@ Built as an enhanced fork of the original X-UI project, 3X-UI adds broader proto
 
 ## Quick Start
 
-This fork's `dev` branch adds HTB port speed limits. `install.sh` installs prebuilt binaries; it does not compile source. For a native installation without Docker, build this checkout with `bash scripts/build-native.sh`, then install its archive using `XUI_INSTALL_ARCHIVE`. If you already have a matching package, skip the build; the target server does not need Go or Node.js. See the [native build and installation guide (中文)](README.zh_CN.md#htb-分支原生安装不使用-docker) for prerequisites and commands.
+This fork's `dev` branch adds HTB port speed limits. Native packages use the existing [Release workflow](.github/workflows/release.yml). `install.sh` installs prebuilt binaries; the target server does not need Docker, Go or Node.js. See the [native installation guide (中文)](README.zh_CN.md#htb-分支原生安装不使用-docker) for commands and tc requirements.
 
 The installer, CLI updater and panel update checker default to `limit81995/3x-ui`, with scripts from `dev`. Online installation and updates require matching Release assets in this repository; pushing to `dev` does not automatically publish them. Missing releases fail without falling back to upstream. To use another source explicitly, set `XUI_RELEASE_REPO=owner/repository` and `XUI_RELEASE_REF=branch-or-tag` for both the CLI and panel service.
 

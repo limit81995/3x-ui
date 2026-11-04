@@ -73,65 +73,21 @@
 
 ## 快速开始
 
-本仓库 `dev` 分支包含入站端口 HTB 限速功能。**`install.sh` 只安装已编译的程序，不会自动编译源码。** 原生安装不需要 Docker，是否需要先构建取决于手上已有的文件：
-
-| 已有内容 | 是否需要自己构建 | 安装方式 |
-| --- | --- | --- |
-| 本分支源码 | 需要，在构建机执行一次 | 构建安装包后，用 `XUI_INSTALL_ARCHIVE` 安装 |
-| 本分支安装包、校验文件和安装脚本 | 不需要 | 在目标服务器用 `XUI_INSTALL_ARCHIVE` 安装 |
-| 本分支已发布的对应 Release | 不需要 | 由脚本下载该 Release 的安装包；须先完成发布 |
-
-仅推送源码到 `dev` 分支不会自动发布安装包。要安装当前源码中的 HTB 功能，请按下面的本地包流程操作。
+本仓库 `dev` 分支包含入站端口 HTB 限速功能。安装包沿用原项目的 [Release 工作流](.github/workflows/release.yml) 构建和发布。**`install.sh` 只安装已编译的程序，不会自动编译源码；目标服务器不需要 Docker、Go 或 Node.js。**
 
 ### HTB 分支原生安装（不使用 Docker）
 
-**1. 在 Linux 构建机生成安装包**
+安装脚本会安装发行版对应的 tc/kmod 依赖，配置 HTB/IFB 等模块开机加载，并沿用原有 systemd/OpenRC 安装流程。目标主机的内核需支持这些模块。
 
-准备 Go（版本要求见 `go.mod`，当前为 1.27.3+）、Node.js 26+、npm 11+、Git、musl C 编译器（例如 `musl-tools` 提供的 `musl-gcc`）、curl、unzip、tar 和 sha256sum。构建过程中需要联网下载依赖和运行资源。
+安装、命令行更新、菜单脚本更新和面板版本检查统一使用本仓库 `limit81995/3x-ui`。在线安装和更新需要本仓库已发布包含扩展代码及目标架构安装包的 Release；仅推送源码到 `dev` 不会自动发布安装包。
 
-首次获取源码并构建：
+本仓库发布对应 Release 后，执行 `sudo x-ui update` 更新到最新稳定版，或执行 `sudo x-ui update-dev` 更新到 `dev-latest`。网页首页点击面板版本号后也可更新。旧安装需要先升级程序和菜单脚本，才能使用新的更新源。Docker 安装通过新镜像重建容器升级，沿用原数据挂载。
 
-```bash
-git clone --branch dev https://github.com/limit81995/3x-ui.git
-cd 3x-ui
-bash scripts/build-native.sh
-```
-
-已有源码时，在仓库目录运行 `bash scripts/build-native.sh` 即可。该脚本会构建前端和 Go 程序、下载 Xray 等运行资源并打包；内部复用的 `DockerInit.sh` 只是资源下载脚本，不需要 Docker。
-
-输出位于 `dist/native/`，包含三个文件：
-
-- `x-ui-linux-<架构>.tar.gz`：程序、前端和运行资源。
-- `x-ui-linux-<架构>.tar.gz.sha256`：安装包校验文件。
-- `install.sh`：配套安装脚本。
-
-默认构建本机架构，支持 amd64、arm64、armv7、armv6 和 386。程序使用 musl 静态链接；跨架构构建需配置对应的 Go 目标架构和 musl 编译器，可通过 `XUI_NATIVE_CC` 指定编译器。安装包架构必须与目标服务器一致。
-
-**2. 在目标 Linux 服务器安装**
-
-目标服务器**不需要 Go、Node.js、npm 或编译器**。将上述三个文件复制到服务器并进入其存放目录；若直接在构建机上安装，则先执行 `cd dist/native`。以下以 amd64 为例：
-
-```bash
-sudo env XUI_INSTALL_ARCHIVE="$PWD/x-ui-linux-amd64.tar.gz" bash ./install.sh
-```
-
-已经拿到这三个文件时，直接执行这一步，无需重新构建。每个新版本只需为所用架构构建一次，安装包可复用于多台相同架构的服务器。
-
-脚本会验证安装包及必需文件，安装发行版对应的 tc/kmod 依赖，配置 HTB/IFB 等模块开机加载，并沿用原有 systemd/OpenRC 安装流程。控制脚本和服务文件从同一个本地包读取，不会下载上游程序覆盖本分支。目标主机仍需支持这些内核功能；安装用户态依赖不能替代缺失的内核支持。
-
-本地包安装仍需联网安装系统依赖。首次安装完成后，按脚本输出的面板地址、账号和密码登录；也可运行 `x-ui` 管理服务和登录凭据。
-
-**3. 后续升级或使用 Release 安装**
-
-升级时，从更新后的源码重新构建（或获取本分支的新安装包），再执行同样的本地包安装命令，保留原数据库。安装、命令行更新、菜单脚本更新和面板版本检查现在统一使用本仓库 `limit81995/3x-ui`。
-
-本仓库发布对应 Release 后，原生安装可执行 `sudo x-ui update` 更新到本仓库最新稳定版，或执行 `sudo x-ui update-dev` 更新到本仓库的 `dev-latest`。网页首页点击面板版本号后也可更新。旧安装需要先通过配套本地包升级程序和菜单脚本，才能使用新的更新源。Docker 安装通过新镜像重建容器升级，沿用原数据挂载。
-
-若要通过远程脚本下载程序，需先在指定仓库发布包含本分支代码和对应架构安装包、校验文件的 Release。远程安装源由 `XUI_RELEASE_REPO` 指定，默认 `limit81995/3x-ui`；`dev-latest` 的脚本分支默认 `dev`，可用 `XUI_RELEASE_REF` 覆盖。这里的 `dev-latest` 是 Release 标签，不表示脚本会拉取 `dev` 源码编译。本地包安装不依赖发布 Release。
+安装和更新源可通过 `XUI_RELEASE_REPO` 指定，默认 `limit81995/3x-ui`；开发版脚本分支默认 `dev`，可用 `XUI_RELEASE_REF` 覆盖。`dev-latest` 是 Release 标签，不表示脚本会拉取源码编译。
 
 ### 本仓库在线安装
 
-以下命令从 `limit81995/3x-ui` 下载。使用前须先发布包含本分支代码和目标架构安装包的 Release；如果对应版本不存在，会报错，不会回退到上游。尚未发布时使用上面的本地包安装流程。
+以下命令从 `limit81995/3x-ui` 下载。使用前须先发布包含本分支代码和目标架构安装包的 Release；如果对应版本不存在，会报错，不会回退到上游。
 
 ```bash
 bash <(curl -Ls https://raw.githubusercontent.com/limit81995/3x-ui/dev/install.sh)
@@ -152,6 +108,12 @@ bash <(curl -Ls https://raw.githubusercontent.com/limit81995/3x-ui/dev/install.s
 安装过程中会生成随机的用户名、密码和访问路径。安装完成后，运行 `x-ui` 打开管理菜单，您可以在其中启动/停止服务、查看或重置登录凭据、管理 SSL 证书等。
 
 每个发布资源都会在其旁边附带一个 `.sha256` 校验和。`install.sh` 和更新程序都会据此校验压缩包，不匹配时中止。
+
+已有本仓库的完整安装包、同名 `.sha256` 文件和配套 `install.sh` 时，也可本地安装或升级，保留原数据库（以下以 amd64 为例；仍需联网安装系统依赖）：
+
+```bash
+sudo env XUI_INSTALL_ARCHIVE="$PWD/x-ui-linux-amd64.tar.gz" bash ./install.sh
+```
 
 完整文档（安装、配置、运维以及完整的 API 参考）请访问 **[docs.sanaei.dev](https://docs.sanaei.dev/zh)**。
 
