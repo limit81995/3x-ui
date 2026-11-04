@@ -182,7 +182,7 @@ docker run -d --cap-add=NET_ADMIN --cap-add=NET_RAW ... ghcr.io/mhsanaei/3x-ui
 取消限速、禁用、删除、到期、耗尽配额或更换端口后，会移除不再使用的规则。旧版本 police 动作会自动迁移并清理，其内核引用的释放可能延迟到下一次校准。
 多个启用的入站若在同一节点共用端口，即使监听地址或协议不同，也必须设置相同的限速数值。
 
-镜像已安装 `iproute2-tc`，官方 Compose 已提供 `NET_ADMIN`，无需为 HTB 修改主 Compose 文件；即使关闭 Fail2ban，启用端口限速时仍须保留 `NET_ADMIN`。本地 host 模式测试使用独立的 `docker-compose.tc-local.yml`。宿主机内核须支持 `ifb`、`sch_htb`、`sch_fq_codel`、`sch_ingress`（clsact）、`cls_flower`、`act_mirred`；二进制部署需安装系统的 `iproute2`/`tc` 并提供 `CAP_NET_ADMIN`。
+镜像已安装 `iproute2-tc`，官方 Compose 已提供 `NET_ADMIN`，无需为 HTB 修改主 Compose 文件；即使关闭 Fail2ban，启用端口限速时仍须保留 `NET_ADMIN`。宿主机内核须支持 `ifb`、`sch_htb`、`sch_fq_codel`、`sch_ingress`（clsact）、`cls_flower`、`act_mirred`；二进制部署需安装系统的 `iproute2`/`tc` 并提供 `CAP_NET_ADMIN`。
 默认作用于当前网络命名空间中具有 IPv4/IPv6 默认路由的接口。多出口、策略路由或其他公网接口可设置 `XUI_TC_INTERFACES=eth0,eth1`，只选择真实承载入站流量的接口，避免同一报文经过多个选中接口而重复计量。
 bridge 模式匹配容器内的监听端口，host 模式匹配宿主机端口；若前面有反向代理、隧道或端口转发，应在实际承载该端口流量的位置设置规则。
 回环和 Unix socket 入站不支持此设置，应限制其公网父入站。
