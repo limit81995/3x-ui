@@ -4,7 +4,6 @@ package tclimit
 
 import (
 	"context"
-	"fmt"
 	"net"
 	"os"
 	"reflect"
@@ -78,17 +77,36 @@ func TestKernelReconcile(t *testing.T) {
 		if len(filters) != 8 {
 			t.Fatalf("got %d filters, want 8", len(filters))
 		}
-		ids := map[int]bool{}
+		targets := map[int]int{}
 		for _, filter := range filters {
 			f := filter.(*netlink.Flower)
-			p := f.Actions[0].(*netlink.PoliceAction)
-			if p.Rate != uint32(want)*125000 {
-				t.Fatalf("rate = %d, want %d Mbps", p.Rate, want)
+			if len(f.Actions) != 1 {
+				t.Fatal("unexpected actions")
 			}
-			ids[p.Index] = true
+			redirect, ok := f.Actions[0].(*netlink.MirredAction)
+			if !ok {
+				t.Fatalf("expected redirect, got %T", f.Actions[0])
+			}
+			targets[redirect.Ifindex]++
 		}
-		if len(ids) != 2 {
-			t.Fatalf("TCP/UDP/IP families must share two direction buckets: %v", ids)
+		if len(targets) != 2 {
+			t.Fatal(targets)
+		}
+		for index, count := range targets {
+			if count != 4 {
+				t.Fatalf("protocols do not share one shaper: %v", targets)
+			}
+			target, err := netlink.LinkByIndex(index)
+			if err != nil {
+				t.Fatal(err)
+			}
+			classes, err := netlink.ClassList(target, rootHandle)
+			if err != nil || len(classes) != 1 {
+				t.Fatalf("classes=%v err=%v", classes, err)
+			}
+			if !classEqual(classes[0], Limit{443, want}) {
+				t.Fatalf("incorrect HTB class: %+v", classes[0])
+			}
 		}
 	}
 	apply([]Limit{{443, 8}})
@@ -99,8 +117,8 @@ func TestKernelReconcile(t *testing.T) {
 		t.Fatalf("unchanged kernel state rewrote rules: %d -> %d", initialWrites, writes)
 	}
 
-	// An external tc invocation changes the live action without touching DB.
-	_, err = runTC(ctx, "actions", "replace", "action", "police", "index", fmt.Sprint(actionID(443, true)), "rate", "2mbit", "burst", "128k", "mtu", "65536", "conform-exceed", "drop/continue", "skip_hw")
+	// Change the live class without touching the saved configuration.
+	_, err = runTC(ctx, "class", "change", "dev", "xui-tc-up", "parent", "3a00:", "classid", "3a00:1bb", "htb", "rate", "2mbit", "ceil", "30mbit")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -120,7 +138,7 @@ func TestKernelReconcile(t *testing.T) {
 	} else {
 		f.SrcPort = 444
 	}
-	if err := m.replaceFilter(ctx, link.Attrs().Name, f); err != nil {
+	if err := m.replaceFilter(ctx, link.Attrs().Name, f, "xui-tc-up"); err != nil {
 		t.Fatal(err)
 	}
 	apply([]Limit{{443, 16}})
@@ -180,34 +198,35 @@ func TestParseActionIDs(t *testing.T) {
 
 func TestFilterOwnershipAndDirection(t *testing.T) {
 	link := &netlink.Dummy{LinkAttrs: netlink.LinkAttrs{Index: 10}}
-	filters := desiredFilters(link, []Limit{{443, 100}})
-	if len(filters) != 8 {
-		t.Fatal(len(filters))
-	}
-	ids := map[int]int{}
-	for _, f := range filters {
-		if !ownedFilter(f) {
-			t.Fatal("own filter not recognized")
+	for _, upload := range []bool{true, false} {
+		target := &netlink.Ifb{LinkAttrs: netlink.LinkAttrs{Index: 11}}
+		filters := desiredFilters(link, []Limit{{443, 100}}, upload, target)
+		if len(filters) != 4 {
+			t.Fatal(len(filters))
 		}
-		up := f.Parent == netlink.HANDLE_MIN_INGRESS
-		if up && f.DestPort != 443 || !up && f.SrcPort != 443 {
-			t.Fatal("wrong direction")
+		for _, f := range filters {
+			if !ownedFilter(f) {
+				t.Fatal("own filter not recognized")
+			}
+			if upload && f.DestPort != 443 || !upload && f.SrcPort != 443 {
+				t.Fatal("wrong direction")
+			}
+			if a, ok := f.Actions[0].(*netlink.MirredAction); !ok || a.Ifindex != 11 {
+				t.Fatal("invalid redirect")
+			}
+			f.Handle = 1
+			if ownedFilter(f) {
+				t.Fatal("unrelated filter claimed")
+			}
 		}
-		p := f.Actions[0].(*netlink.PoliceAction)
-		if p.Rate != 12500000 || !ownedAction(p.Index) {
-			t.Fatal("invalid police action")
+		for _, f := range desiredFilters(target, []Limit{{443, 100}}, upload, nil) {
+			if len(f.Actions) != 0 || f.ClassId != classHandle(443) {
+				t.Fatal("incorrect HTB classifier")
+			}
 		}
-		ids[p.Index]++
-		f.Handle = 1
-		if ownedFilter(f) {
-			t.Fatal("unrelated filter claimed")
-		}
-	}
-	if ids[actionID(443, true)] != 4 || ids[actionID(443, false)] != 4 {
-		t.Fatal(ids)
 	}
 	if ownedAction(42) {
-		t.Fatal("unrelated action claimed")
+		t.Fatal("unrelated legacy action claimed")
 	}
 }
 
@@ -225,21 +244,28 @@ func TestValidate(t *testing.T) {
 	}
 }
 
-func TestActionComparisonRejectsChangedEnforcement(t *testing.T) {
-	want := police(Limit{443, 100}, true)
-	for _, change := range []func(*netlink.PoliceAction){
-		func(p *netlink.PoliceAction) { p.Rate++ },
-		func(p *netlink.PoliceAction) { p.ExceedAction = netlink.TC_POLICE_OK },
-		func(p *netlink.PoliceAction) { p.Burst *= 2 },
-		func(p *netlink.PoliceAction) { p.Mtu = 1500 },
+func TestClassComparisonRejectsChangedEnforcement(t *testing.T) {
+	limit := Limit{443, 100}
+	want := netlink.NewHtbClass(netlink.ClassAttrs{Handle: classHandle(443), Parent: rootHandle}, netlink.HtbClassAttrs{
+		Rate: 100000000, Ceil: 100000000, Buffer: burstBytes(limit), Cbuffer: burstBytes(limit), Quantum: classQuantum(limit),
+	})
+	if !classEqual(want, limit) {
+		t.Fatal("desired class differs")
+	}
+	for _, change := range []func(*netlink.HtbClass){
+		func(h *netlink.HtbClass) { h.Rate++ },
+		func(h *netlink.HtbClass) { h.Ceil *= 2 },
+		func(h *netlink.HtbClass) { h.Buffer *= 2 },
+		func(h *netlink.HtbClass) { h.Cbuffer *= 2 },
+		func(h *netlink.HtbClass) { h.Quantum *= 2 },
+		func(h *netlink.HtbClass) { h.Parent++ },
 	} {
 		got := *want
 		change(&got)
-		if actionEqual(&got, want) {
+		if classEqual(&got, limit) {
 			t.Fatal("changed enforcement accepted")
 		}
 	}
-
 }
 
 func TestKernelCoexistenceAndMissingQdisc(t *testing.T) {
@@ -272,6 +298,7 @@ func TestKernelCoexistenceAndMissingQdisc(t *testing.T) {
 	run("qdisc", "add", "dev", link.Attrs().Name, "root", "handle", "10:", "fq")
 	m := NewManager()
 	limits := []Limit{{443, 8}}
+	t.Cleanup(func() { _ = m.Reconcile(ctx, nil, "") })
 	apply := func(want []Limit) {
 		t.Helper()
 		if err := m.Reconcile(ctx, want, ""); err != nil {

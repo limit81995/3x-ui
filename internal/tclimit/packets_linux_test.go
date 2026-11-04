@@ -6,7 +6,8 @@ import (
 	"context"
 	"encoding/binary"
 	"errors"
-	"os"
+	"fmt"
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -16,96 +17,112 @@ import (
 )
 
 // Flood both directions concurrently with alternating IPv4/IPv6, TCP/UDP
-// frames. A single bucket per direction must cap their combined throughput.
+// frames. One HTB class per direction must cap their combined throughput across two NICs.
 func TestKernelPacketsShareDirectionalLimits(t *testing.T) {
-	if os.Getenv("XUI_TC_TEST") != "1" {
-		t.Skip("requires isolated network namespace")
-	}
-	self, _ := os.Readlink("/proc/self/ns/net")
-	host, err := os.Readlink("/proc/1/ns/net")
-	if err != nil || self == host {
-		t.Fatal("refusing packet test in host network namespace")
-	}
-	link := &netlink.Veth{LinkAttrs: netlink.LinkAttrs{Name: "tc-packet-test"}, PeerName: "tc-packet-peer"}
-	if err := netlink.LinkAdd(link); err != nil {
-		t.Fatal(err)
-	}
-	t.Cleanup(func() { _ = netlink.LinkDel(link) })
-	peer, err := netlink.LinkByName(link.PeerName)
-	if err != nil {
-		t.Fatal(err)
-	}
-	for _, dev := range []netlink.Link{link, peer} {
-		if err := netlink.LinkSetUp(dev); err != nil {
+	requireKernelNamespace(t)
+	var pairs [][2]netlink.Link
+	var names []string
+	for i := range 2 {
+		link := &netlink.Veth{LinkAttrs: netlink.LinkAttrs{Name: fmt.Sprintf("tc-packet-%d", i)}, PeerName: fmt.Sprintf("tc-peer-%d", i)}
+		if err := netlink.LinkAdd(link); err != nil {
 			t.Fatal(err)
 		}
+		t.Cleanup(func() { _ = netlink.LinkDel(link) })
+		peer, err := netlink.LinkByName(link.PeerName)
+		if err != nil {
+			t.Fatal(err)
+		}
+		for _, dev := range []netlink.Link{link, peer} {
+			if err := netlink.LinkSetUp(dev); err != nil {
+				t.Fatal(err)
+			}
+		}
+		pairs = append(pairs, [2]netlink.Link{link, peer})
+		names = append(names, link.Attrs().Name)
 	}
 	m := NewManager()
-	if err := m.Reconcile(context.Background(), []Limit{{443, 8}}, link.Attrs().Name); err != nil {
+	t.Cleanup(func() { _ = m.Reconcile(context.Background(), nil, "") })
+	if err := m.Reconcile(context.Background(), []Limit{{443, 8}}, strings.Join(names, ",")); err != nil {
 		t.Fatal(err)
 	}
 	const frameSize = 1254
 	var wg sync.WaitGroup
-	errCh := make(chan error, 2)
+	errCh := make(chan error, 4)
 	start := time.Now()
-	for _, upload := range []bool{true, false} {
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
-			sender, receiver := netlink.Link(link), peer
-			if upload {
-				sender, receiver = peer, link
-			}
-			fd, err := unix.Socket(unix.AF_PACKET, unix.SOCK_RAW, int(htons(unix.ETH_P_ALL)))
-			if err != nil {
-				errCh <- err
-				return
-			}
-			defer unix.Close(fd)
-			frames := make([][]byte, 4)
-			for i := range frames {
-				frames[i] = packetFrame(frameSize, i >= 2, i%2 == 1, upload)
-				copy(frames[i][:6], receiver.Attrs().HardwareAddr)
-				copy(frames[i][6:12], sender.Attrs().HardwareAddr)
-			}
-			address := &unix.SockaddrLinklayer{Ifindex: sender.Attrs().Index, Halen: 6}
-			for i := 0; time.Since(start) < time.Second; i++ {
-				frame := frames[i%len(frames)]
-				address.Protocol = htons(binary.BigEndian.Uint16(frame[12:14]))
-				if err := unix.Sendto(fd, frame, 0, address); err != nil && !errors.Is(err, unix.ENOBUFS) {
+	for _, pair := range pairs {
+		for _, upload := range []bool{true, false} {
+			wg.Add(1)
+			go func() {
+				defer wg.Done()
+				sender, receiver := pair[0], pair[1]
+				if upload {
+					sender, receiver = pair[1], pair[0]
+				}
+				fd, err := unix.Socket(unix.AF_PACKET, unix.SOCK_RAW, int(htons(unix.ETH_P_ALL)))
+				if err != nil {
 					errCh <- err
 					return
 				}
-			}
-		}()
+				defer unix.Close(fd)
+				frames := make([][]byte, 4)
+				for i := range frames {
+					frames[i] = packetFrame(frameSize, i >= 2, i%2 == 1, upload)
+					copy(frames[i][:6], receiver.Attrs().HardwareAddr)
+					copy(frames[i][6:12], sender.Attrs().HardwareAddr)
+				}
+				address := &unix.SockaddrLinklayer{Ifindex: sender.Attrs().Index, Halen: 6}
+				for i := 0; time.Since(start) < time.Second; i++ {
+					frame := frames[i%len(frames)]
+					address.Protocol = htons(binary.BigEndian.Uint16(frame[12:14]))
+					if err := unix.Sendto(fd, frame, 0, address); err != nil && !errors.Is(err, unix.ENOBUFS) {
+						errCh <- err
+						return
+					}
+				}
+			}()
+		}
 	}
 	wg.Wait()
 	close(errCh)
 	for err := range errCh {
 		t.Fatal(err)
 	}
+	for _, pair := range pairs {
+		for _, parent := range []uint32{netlink.HANDLE_MIN_INGRESS, netlink.HANDLE_MIN_EGRESS} {
+			filters, err := m.kernel.FilterList(pair[0], parent)
+			if err != nil || len(filters) != 4 {
+				t.Fatalf("filters=%d err=%v", len(filters), err)
+			}
+			for _, f := range filters {
+				action := f.(*netlink.Flower).Actions[0].(*netlink.MirredAction)
+				if action.Statistics == nil || action.Statistics.Basic == nil || action.Statistics.Basic.Packets == 0 {
+					t.Fatalf("protocol did not traverse redirect: %+v", f)
+				}
+			}
+		}
+	}
 	elapsed := time.Since(start).Seconds()
-	for _, parent := range []uint32{netlink.HANDLE_MIN_INGRESS, netlink.HANDLE_MIN_EGRESS} {
-		filters, err := m.kernel.FilterList(link, parent)
+	for _, d := range directions {
+		ifb, err := netlink.LinkByName(d.name)
 		if err != nil {
 			t.Fatal(err)
 		}
-		if len(filters) != 4 {
-			t.Fatal(len(filters))
+		classes, err := netlink.ClassList(ifb, rootHandle)
+		if err != nil || len(classes) != 1 {
+			t.Fatalf("classes=%v err=%v", classes, err)
 		}
-		p := filters[0].(*netlink.Flower).Actions[0].(*netlink.PoliceAction)
-		if p.Statistics == nil || p.Statistics.Basic == nil || p.Statistics.Queue == nil {
-			t.Fatal("missing packet counters")
+		stats := classes[0].Attrs().Statistics
+		if stats == nil || stats.Basic == nil || stats.Queue == nil {
+			t.Fatal("missing class counters")
 		}
-		stats := p.Statistics
-		passed := uint64(stats.Basic.Packets) - uint64(stats.Queue.Drops)
-		mbps := float64(passed*frameSize) * 8 / 1e6 / elapsed
-		t.Logf("parent=%x offered=%d dropped=%d passed=%.2f Mbps", parent, stats.Basic.Packets, stats.Queue.Drops, mbps)
-		// The initial burst can add about 1 Mbps over this one-second sample.
-		if mbps < 4 || mbps > 10 || stats.Queue.Drops == 0 {
+		// HTB basic counters record dequeued bytes, not offered traffic.
+		mbps := float64(stats.Basic.Bytes) * 8 / 1e6 / elapsed
+		t.Logf("%s dequeued=%d bytes dropped=%d shaped=%.2f Mbps", d.name, stats.Basic.Bytes, stats.Queue.Drops, mbps)
+		if mbps < 4 || mbps > 10 {
 			t.Fatalf("directional cap ineffective: %.2f Mbps", mbps)
 		}
 	}
+
 }
 
 func htons(v uint16) uint16 { return v<<8 | v>>8 }

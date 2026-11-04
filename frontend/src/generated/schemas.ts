@@ -3228,7 +3228,7 @@ export const SCHEMAS: Record<string, unknown> = {
       },
       "sniffing": {},
       "speedLimit": {
-        "description": "Xray configuration fields\nPort-wide Mbps cap in each direction; 0 disables tc policing",
+        "description": "Xray configuration fields\nPort-wide Mbps cap in each direction; 0 disables tc limiting",
         "example": 0,
         "maximum": 10000,
         "minimum": 0,

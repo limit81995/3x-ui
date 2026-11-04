@@ -1,7 +1,5 @@
-// Package tclimit reconciles port-wide Linux traffic-control policers.
-// Each port has one shared token bucket per direction, across IP families,
-// TCP/UDP and selected network interfaces. These are kernel tc rules, visible
-// with tc; Xray does not need to be patched or restarted to change a rate.
+// Package tclimit reconciles shared per-port, per-direction Linux HTB limits
+// across protocols and selected interfaces without restarting Xray.
 package tclimit
 
 import (
@@ -12,7 +10,7 @@ import (
 	"time"
 )
 
-// MaxMbps keeps the byte rate within the uint32 police ABI used by netlink.
+// MaxMbps is the public API limit, shared with model validation and the UI.
 const MaxMbps = 10000
 
 type Limit struct {
@@ -44,7 +42,7 @@ func runTC(ctx context.Context, args ...string) ([]byte, error) {
 	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
 	// Arguments never pass through a shell. Do not include configuration or
-	// credentials in errors; tc only receives numeric rates/action IDs here.
+	// credentials in errors; tc only receives interface names and numeric traffic-control parameters here.
 	out, err := exec.CommandContext(ctx, "tc", args...).CombinedOutput()
 	if err != nil {
 		return nil, fmt.Errorf("tc %s: %w: %s", strings.Join(args, " "), err, strings.TrimSpace(string(out)))

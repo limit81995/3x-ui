@@ -11,7 +11,7 @@ services:
     # The bundled Fail2ban (XUI_ENABLE_FAIL2BAN below) enforces the IP limit
     # with iptables, which needs NET_ADMIN. Without these caps a ban is logged
     # and shown in fail2ban status but never actually applied. NET_RAW covers
-    # ip6tables. If you disable Fail2ban, you can drop cap_add.
+    # ip6tables. Keep NET_ADMIN when using port speed limits.
     #
     # AmneziaWG works in this image: it runs embedded in the panel process
     # (amneziawg-go over a gVisor userspace netstack), so it needs no kernel
@@ -28,7 +28,7 @@ services:
     environment:
       XRAY_VMESS_AEAD_FORCED: "false"
       XUI_ENABLE_FAIL2BAN: "true"
-      # Port speed limits require NET_ADMIN and Linux clsact/flower/police.
+      # Port speed limits require NET_ADMIN and Linux IFB/HTB/clsact/flower/mirred/FQ-CoDel.
       # By default, tc uses interfaces with an IPv4/IPv6 default route.
       # Set this for policy routing or additional public-facing interfaces.
       # XUI_TC_INTERFACES: "eth0"
