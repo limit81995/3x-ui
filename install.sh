@@ -8,6 +8,12 @@ plain='\033[0m'
 
 xui_folder="${XUI_MAIN_FOLDER:=/usr/local/x-ui}"
 xui_service="${XUI_SERVICE:=/etc/systemd/system}"
+# Override explicitly when installing another fork or upstream release.
+XUI_RELEASE_REPO="${XUI_RELEASE_REPO:-limit81995/3x-ui}"
+if [[ ! "$XUI_RELEASE_REPO" =~ ^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$ ]]; then
+    echo "XUI_RELEASE_REPO must be owner/repository" >&2
+    exit 1
+fi
 
 # check root
 [[ $EUID -ne 0 ]] && echo -e "${red}Fatal error: ${plain} Please run this script with root privilege \n " && exit 1
@@ -164,29 +170,29 @@ select_panel_port() {
 install_base() {
     case "${release}" in
         ubuntu | debian | armbian)
-            apt-get update && apt-get install -y -q cron curl tar tzdata socat ca-certificates openssl
+            apt-get update && apt-get install -y -q cron curl tar tzdata socat ca-certificates openssl iproute2 kmod
             ;;
         fedora | amzn | virtuozzo | rhel | almalinux | rocky | ol)
-            dnf makecache -y && dnf install -y -q cronie curl tar tzdata socat ca-certificates openssl
+            dnf makecache -y && dnf install -y -q cronie curl tar tzdata socat ca-certificates openssl iproute iproute-tc kmod
             ;;
         centos)
             if [[ "${VERSION_ID}" =~ ^7 ]]; then
-                yum makecache -y && yum install -y cronie curl tar tzdata socat ca-certificates openssl
+                yum makecache -y && yum install -y cronie curl tar tzdata socat ca-certificates openssl iproute kmod
             else
-                dnf makecache -y && dnf install -y -q cronie curl tar tzdata socat ca-certificates openssl
+                dnf makecache -y && dnf install -y -q cronie curl tar tzdata socat ca-certificates openssl iproute iproute-tc kmod
             fi
             ;;
         arch | manjaro | parch)
-            pacman -Sy --noconfirm cronie curl tar tzdata socat ca-certificates openssl
+            pacman -Sy --noconfirm cronie curl tar tzdata socat ca-certificates openssl iproute2 kmod
             ;;
         opensuse-tumbleweed | opensuse-leap)
-            zypper refresh && zypper -q install -y cron curl tar timezone socat ca-certificates openssl
+            zypper refresh && zypper -q install -y cron curl tar timezone socat ca-certificates openssl iproute2 kmod
             ;;
         alpine)
-            apk update && apk add dcron curl tar tzdata socat ca-certificates openssl
+            apk update && apk add dcron curl tar tzdata socat ca-certificates openssl iproute2 iproute2-tc kmod
             ;;
         *)
-            apt-get update && apt-get install -y -q cron curl tar tzdata socat ca-certificates openssl
+            apt-get update && apt-get install -y -q cron curl tar tzdata socat ca-certificates openssl iproute2 kmod
             ;;
     esac
 }
@@ -1728,13 +1734,13 @@ _install_xui_service_unit() {
 # fails with "Failed to fetch x-ui version"), and falls back to the API.
 resolve_latest_tag() {
     local url tag
-    url=$(curl -sSLI -o /dev/null -w '%{url_effective}' --retry 5 --retry-delay 3 --connect-timeout 15 --max-time 60 "https://github.com/MHSanaei/3x-ui/releases/latest" 2>/dev/null)
+    url=$(curl -sSLI -o /dev/null -w '%{url_effective}' --retry 5 --retry-delay 3 --connect-timeout 15 --max-time 60 "https://github.com/${XUI_RELEASE_REPO}/releases/latest" 2>/dev/null)
     tag=${url##*/tag/}
     if [[ "$tag" != "$url" && -n "$tag" && "$tag" != "latest" ]]; then
         echo "$tag"
         return 0
     fi
-    curl -Ls --retry 5 --retry-delay 3 --connect-timeout 15 --max-time 60 "https://api.github.com/repos/MHSanaei/3x-ui/releases/latest" | grep '"tag_name":' | sed -E 's/.*"([^"]+)".*/\1/'
+    curl -Ls --retry 5 --retry-delay 3 --connect-timeout 15 --max-time 60 "https://api.github.com/repos/${XUI_RELEASE_REPO}/releases/latest" | grep '"tag_name":' | sed -E 's/.*"([^"]+)".*/\1/'
 }
 
 # Releases publish <asset>.sha256 next to each archive. A mismatch or a failed
@@ -1773,7 +1779,7 @@ require_repo_files() {
     shift
     [[ "${ref}" == "main" ]] && return 0
     for name in "$@"; do
-        status=$(curl -sIL --retry 3 --connect-timeout 15 -o /dev/null -w '%{http_code}' "https://raw.githubusercontent.com/MHSanaei/3x-ui/${ref}/${name}")
+        status=$(curl -sIL --retry 3 --connect-timeout 15 -o /dev/null -w '%{http_code}' "https://raw.githubusercontent.com/${XUI_RELEASE_REPO}/${ref}/${name}")
         if [[ "${status}" != "200" ]]; then
             echo -e "${red}${name} is not available for ${ref} (HTTP ${status})${plain}"
             echo -e "${red}Install a release that ships it, or 'dev' for the rolling build. Your existing installation has not been touched.${plain}"
@@ -1782,18 +1788,101 @@ require_repo_files() {
     done
 }
 
+# A local build must be complete and verified before the existing service is stopped.
+prepare_local_archive() {
+    local archive target expected actual listing entry kind service
+    archive=$(readlink -f -- "$1") || return 1
+    target="${xui_folder}-linux-$(arch).tar.gz"
+    if [[ ! -s "$archive" || ! -s "$archive.sha256" ]]; then
+        echo "Local installation requires an archive and its .sha256 file: $1" >&2
+        return 1
+    fi
+    expected=$(awk 'NR == 1 {print $1}' "$archive.sha256")
+    actual=$(sha256sum "$archive") || return 1
+    if [[ ! "$expected" =~ ^[0-9a-f]{64}$ || "$expected" != "${actual%% *}" ]]; then
+        echo "Local archive checksum mismatch: $archive" >&2
+        return 1
+    fi
+    listing=$(tar -tzf "$archive") || return 1
+    while IFS= read -r entry; do
+        case "$entry" in x-ui | x-ui/ | x-ui/*) ;; *) echo "Unexpected archive path: $entry" >&2; return 1 ;; esac
+        if [[ "$entry" =~ (^|/)\.\.(/|$) ]]; then
+            echo "Invalid archive path: $entry" >&2
+            return 1
+        fi
+    done <<< "$listing"
+    # Local build packages contain only regular files and directories, never links/devices.
+    kind=$(tar -tvzf "$archive") || return 1
+    if ! awk 'substr($0,1,1) != "-" && substr($0,1,1) != "d" {exit 1}' <<< "$kind"; then
+        echo "Local archive contains links or special files" >&2
+        return 1
+    fi
+    local required=(x-ui/x-ui x-ui/x-ui.sh "x-ui/bin/xray-linux-$(arch)")
+    if [[ "$release" == alpine ]]; then
+        required+=(x-ui/x-ui.rc)
+    elif grep -Fxq x-ui/x-ui.service <<< "$listing"; then
+        required+=(x-ui/x-ui.service)
+    else
+        case "$release" in
+            ubuntu | debian | armbian) service=debian ;;
+            arch | manjaro | parch) service=arch ;;
+            *) service=rhel ;;
+        esac
+        required+=("x-ui/x-ui.service.$service")
+    fi
+    for entry in "${required[@]}"; do
+        if ! grep -Fxq "$entry" <<< "$listing" || [[ $(tar -xOzf "$archive" "$entry" | wc -c) -eq 0 ]]; then
+            echo "Local archive is missing a required file: $entry" >&2
+            return 1
+        fi
+    done
+    mkdir -p "$(dirname "$target")" || return 1
+    if [[ "$archive" != "$(readlink -f -- "$target")" ]]; then
+        cp -- "$archive" "$target" || return 1
+    fi
+    echo "Verified local installation archive: $archive"
+}
+
+# Service hardening intentionally blocks modprobe; preload available TC modules here.
+prepare_tc_modules() {
+    command -v tc >/dev/null 2>&1 || { echo "tc is missing; install the distribution's iproute2/iproute-tc package" >&2; return 1; }
+    local module
+    local modules=(ifb sch_htb sch_fq_codel sch_ingress cls_flower act_mirred)
+    local missing=()
+    mkdir -p /etc/modules-load.d || return 1
+    printf '%s\n' "${modules[@]}" > /etc/modules-load.d/x-ui-tc.conf || return 1
+    if [[ "$release" == alpine ]]; then
+        rc-update add modules boot || return 1
+    fi
+    for module in "${modules[@]}"; do
+        [[ -d "/sys/module/$module" ]] && continue
+        if ! modprobe "$module" >/dev/null 2>&1; then
+            missing+=("$module")
+        fi
+    done
+    if ((${#missing[@]})); then
+        echo "TC kernel modules could not be loaded: ${missing[*]}. Built-in drivers may still work; check panel logs when enabling a speed limit." >&2
+    fi
+}
+
 install_x-ui() {
+    if [[ -n "${XUI_INSTALL_ARCHIVE:-}" ]]; then
+        prepare_local_archive "$XUI_INSTALL_ARCHIVE" || exit 1
+    fi
     cd ${xui_folder%/x-ui}/
 
     # Download resources
-    if [ $# == 0 ]; then
+    if [[ -n "${XUI_INSTALL_ARCHIVE:-}" ]]; then
+        tag_version="local"
+        echo "Installing the verified local build (no upstream program/script downloads)"
+    elif [ $# == 0 ]; then
         tag_version=$(resolve_latest_tag)
         if [[ ! -n "$tag_version" ]]; then
-            echo -e "${red}Failed to fetch x-ui version, it may be due to GitHub API restrictions, please try it later${plain}"
+            echo -e "${red}No latest release could be resolved from ${XUI_RELEASE_REPO}. Publish a release or set XUI_INSTALL_ARCHIVE to a local build${plain}"
             exit 1
         fi
         echo -e "Got x-ui latest version: ${tag_version}, beginning the installation..."
-        curl -fLR --retry 5 --retry-delay 3 --connect-timeout 15 --speed-limit 1 --speed-time 300 -o ${xui_folder}-linux-$(arch).tar.gz https://github.com/MHSanaei/3x-ui/releases/download/${tag_version}/x-ui-linux-$(arch).tar.gz
+        curl -fLR --retry 5 --retry-delay 3 --connect-timeout 15 --speed-limit 1 --speed-time 300 -o ${xui_folder}-linux-$(arch).tar.gz https://github.com/${XUI_RELEASE_REPO}/releases/download/${tag_version}/x-ui-linux-$(arch).tar.gz
         if [[ $? -ne 0 ]]; then
             echo -e "${red}Downloading x-ui failed, please be sure that your server can access GitHub ${plain}"
             exit 1
@@ -1803,7 +1892,7 @@ install_x-ui() {
             echo -e "${red}Downloaded x-ui release archive is empty${plain}"
             exit 1
         fi
-        verify_release_checksum "https://github.com/MHSanaei/3x-ui/releases/download/${tag_version}/x-ui-linux-$(arch).tar.gz" "${xui_folder}-linux-$(arch).tar.gz"
+        verify_release_checksum "https://github.com/${XUI_RELEASE_REPO}/releases/download/${tag_version}/x-ui-linux-$(arch).tar.gz" "${xui_folder}-linux-$(arch).tar.gz"
     else
         tag_version=$1
         # The rolling dev channel ships under a fixed, non-semver tag that is
@@ -1822,7 +1911,7 @@ install_x-ui() {
             fi
         fi
 
-        url="https://github.com/MHSanaei/3x-ui/releases/download/${tag_version}/x-ui-linux-$(arch).tar.gz"
+        url="https://github.com/${XUI_RELEASE_REPO}/releases/download/${tag_version}/x-ui-linux-$(arch).tar.gz"
         echo -e "Beginning to install x-ui ${tag_version}"
         curl -fLR --retry 5 --retry-delay 3 --connect-timeout 15 --speed-limit 1 --speed-time 300 -o ${xui_folder}-linux-$(arch).tar.gz ${url}
         if [[ $? -ne 0 ]]; then
@@ -1840,17 +1929,22 @@ install_x-ui() {
     # the binary; only the rolling dev build tracks main.
     local script_ref="${tag_version}"
     if [[ "${tag_version}" == "dev-latest" ]]; then
-        script_ref="main"
+        script_ref="${XUI_RELEASE_REF:-dev}"
+        [[ "${XUI_RELEASE_REPO,,}" != "mhsanaei/3x-ui" ]] || script_ref="${XUI_RELEASE_REF:-main}"
     fi
     # The unit files are only fetched when the release tarball lacks them, so
     # they are checked at that point instead of here.
     local required_files=("x-ui.sh")
     [[ $release == "alpine" ]] && required_files+=("x-ui.rc")
-    require_repo_files "${script_ref}" "${required_files[@]}"
-    local xui_script_temp="/usr/bin/x-ui-temp.$$"
+    local xui_script_temp="/usr/bin/x-ui-temp.$$" script_status=0
     rm -f "${xui_script_temp}"
-    curl -fLRo "${xui_script_temp}" "https://raw.githubusercontent.com/MHSanaei/3x-ui/${script_ref}/x-ui.sh"
-    if [[ $? -ne 0 ]]; then
+    if [[ -n "${XUI_INSTALL_ARCHIVE:-}" ]]; then
+        tar -xOzf "${xui_folder}-linux-$(arch).tar.gz" x-ui/x-ui.sh > "$xui_script_temp" || script_status=$?
+    else
+        require_repo_files "${script_ref}" "${required_files[@]}"
+        curl -fLRo "${xui_script_temp}" "https://raw.githubusercontent.com/${XUI_RELEASE_REPO}/${script_ref}/x-ui.sh" || script_status=$?
+    fi
+    if [[ $script_status -ne 0 ]]; then
         rm -f "${xui_script_temp}"
         echo -e "${red}Failed to download x-ui.sh${plain}"
         exit 1
@@ -2004,8 +2098,13 @@ install_x-ui() {
     if [[ $release == "alpine" ]]; then
         xui_rc_temp="/etc/init.d/x-ui.tmp.$$"
         rm -f "${xui_rc_temp}"
-        curl -fLRo "${xui_rc_temp}" "https://raw.githubusercontent.com/MHSanaei/3x-ui/${script_ref}/x-ui.rc"
-        if [[ $? -ne 0 ]]; then
+        local rc_status=0
+        if [[ -n "${XUI_INSTALL_ARCHIVE:-}" ]]; then
+            cp x-ui.rc "$xui_rc_temp" || rc_status=$?
+        else
+            curl -fLRo "${xui_rc_temp}" "https://raw.githubusercontent.com/${XUI_RELEASE_REPO}/${script_ref}/x-ui.rc" || rc_status=$?
+        fi
+        if [[ $rc_status -ne 0 ]]; then
             rm -f "${xui_rc_temp}"
             echo -e "${red}Failed to download x-ui.rc${plain}"
             exit 1
@@ -2069,13 +2168,13 @@ install_x-ui() {
             echo -e "${yellow}Service files not found in tar.gz, downloading from GitHub...${plain}"
             case "${release}" in
                 ubuntu | debian | armbian)
-                    service_unit_url="https://raw.githubusercontent.com/MHSanaei/3x-ui/${script_ref}/x-ui.service.debian"
+                    service_unit_url="https://raw.githubusercontent.com/${XUI_RELEASE_REPO}/${script_ref}/x-ui.service.debian"
                     ;;
                 arch | manjaro | parch)
-                    service_unit_url="https://raw.githubusercontent.com/MHSanaei/3x-ui/${script_ref}/x-ui.service.arch"
+                    service_unit_url="https://raw.githubusercontent.com/${XUI_RELEASE_REPO}/${script_ref}/x-ui.service.arch"
                     ;;
                 *)
-                    service_unit_url="https://raw.githubusercontent.com/MHSanaei/3x-ui/${script_ref}/x-ui.service.rhel"
+                    service_unit_url="https://raw.githubusercontent.com/${XUI_RELEASE_REPO}/${script_ref}/x-ui.service.rhel"
                     ;;
             esac
 
@@ -2103,6 +2202,9 @@ install_x-ui() {
     # works out of the box (no-op when XUI_ENABLE_FAIL2BAN=false). Never fatal.
     setup_fail2ban
 
+    if [[ "${XUI_RELEASE_REPO,,}" != "mhsanaei/3x-ui" || -n "${XUI_INSTALL_ARCHIVE:-}" ]]; then
+        echo "For fork builds, update with this installer and the matching package. The original panel/CLI updater still targets upstream."
+    fi
     echo -e "${green}x-ui ${tag_version}${plain} installation finished, it is running now..."
     echo -e ""
     echo -e "┌───────────────────────────────────────────────────────┐
@@ -2126,5 +2228,6 @@ install_x-ui() {
 }
 
 echo -e "${green}Running...${plain}"
-install_base
-install_x-ui $1
+install_base || exit 1
+prepare_tc_modules || exit 1
+install_x-ui "$@"

@@ -356,6 +356,10 @@ func (s *Server) startTask(restartXray bool, loc *time.Location) {
 	_, _ = s.cron.AddJob(cadenceTuic, tuicJob)
 	go tuicJob.Run()
 
+	tcJob := job.NewTCSpeedLimitJob(s.ctx)
+	_, _ = s.cron.AddJob("@every 1m", tcJob)
+	go tcJob.Watch()
+
 	// check client ips from log file every 10 sec
 	_, _ = s.cron.AddJob(cadenceClientIPScan, job.NewCheckClientIpJob())
 

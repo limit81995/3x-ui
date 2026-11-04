@@ -40,6 +40,7 @@ const XMUX_DEFAULTS = XHttpXmuxSchema.parse({});
 // POST to /panel/api/inbounds/add or /update/:id.
 
 export interface RawInboundRow {
+  speedLimit?: number;
   port?: number;
   listen?: string;
   protocol?: string;
@@ -69,6 +70,7 @@ export interface RawInboundRow {
 // strings, mirroring what the Go endpoints expect (xray-core wants the
 // nested config slices as strings to round-trip through its loader).
 export interface WireInboundPayload {
+  speedLimit: number;
   up: number;
   down: number;
   total: number;
@@ -228,6 +230,7 @@ export function rawInboundToFormValues(row: RawInboundRow): InboundFormValues {
     up: row.up ?? 0,
     down: row.down ?? 0,
     total: row.total ?? 0,
+    speedLimit: row.speedLimit ?? 0,
     trafficReset: coerceTrafficReset(row.trafficReset),
     trafficResetDay: Math.min(31, Math.max(1, row.trafficResetDay ?? 1)),
     lastTrafficResetTime: row.lastTrafficResetTime ?? 0,
@@ -381,6 +384,7 @@ export function formValuesToWirePayload(
     up: values.up,
     down: values.down,
     total: values.total,
+    speedLimit: values.speedLimit,
     remark: values.remark,
     enable: values.enable,
     expiryTime: values.expiryTime,

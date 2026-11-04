@@ -839,6 +839,7 @@ export const EXAMPLES: Record<string, unknown> = {
     "shareAddr": "",
     "shareAddrStrategy": "node",
     "sniffing": null,
+    "speedLimit": 0,
     "streamSettings": null,
     "subSortIndex": 1,
     "tag": "in-443-tcp",

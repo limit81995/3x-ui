@@ -721,6 +721,8 @@
         "shareAddr": "自訂分享地址",
         "shareAddrHelp": "僅在分享地址策略為自訂時使用。填寫不帶協定和連接埠的網域或 IP。",
         "subSortIndex": "訂閱排序",
+        "speedLimit": "連接埠限速",
+        "speedLimitHelp": "單位 Mbps，同一連接埠的所有使用者及 TCP/UDP、IPv4/IPv6 流量共用額度。上傳、下載分別限制為此數值，0 表示不限速。儲存後生效，每分鐘檢查並恢復實際限速規則。",
         "subSortIndexHelp": "此入站的連結在訂閱輸出（訂閱頁面和客戶端應用）中的位置。數值越小越靠前；數值相同時保持建立順序。不影響面板中的入站清單。",
         "excludeFromSub": "從訂閱中排除",
         "excludeFromSubHelp": "從訂閱輸出中隱藏此入站的連結，同時保持入站啟用並繼續運作。",

@@ -67,7 +67,7 @@ export interface Section {
 
 // /inbounds/update replaces the whole row, so it takes the same payload as /add.
 const inboundBody =
-  '{\n  "enable": true,\n  "remark": "VLESS-443",\n  "listen": "",\n  "port": 443,\n  "protocol": "vless",\n  "expiryTime": 0,\n  "total": 0,\n  "settings": {\n    "clients": [{ "id": "...", "email": "user1" }],\n    "decryption": "none"\n  },\n  "streamSettings": {\n    "network": "tcp",\n    "security": "reality",\n    "realitySettings": { "show": false, "dest": "..." }\n  },\n  "sniffing": {\n    "enabled": true,\n    "destOverride": ["http", "tls"]\n  }\n}';
+  '{\n  "enable": true,\n  "remark": "VLESS-443",\n  "listen": "",\n  "port": 443,\n  "speedLimit": 100,\n  "protocol": "vless",\n  "expiryTime": 0,\n  "total": 0,\n  "settings": {\n    "clients": [{ "id": "...", "email": "user1" }],\n    "decryption": "none"\n  },\n  "streamSettings": {\n    "network": "tcp",\n    "security": "reality",\n    "realitySettings": { "show": false, "dest": "..." }\n  },\n  "sniffing": {\n    "enabled": true,\n    "destOverride": ["http", "tls"]\n  }\n}';
 
 const outboundSubscriptionBodyParams: EndpointParam[] = [
   {
@@ -309,7 +309,7 @@ export const sections: readonly Section[] = [
         method: 'POST',
         path: '/panel/api/inbounds/add',
         summary:
-          'Create a new inbound. Send the full inbound payload (protocol, port, settings, streamSettings, sniffing, remark, expiryTime, total, enable). settings, streamSettings, and sniffing may be sent as nested JSON objects (preferred) or as JSON-encoded strings (legacy). VLESS empty fallback arrays are normalized away; nonempty fallbacks cannot be combined with active server decryption.',
+          'Create a new inbound. Send the full inbound payload (protocol, port, settings, streamSettings, sniffing, remark, expiryTime, total, enable, speedLimit). speedLimit is an integer from 0 to 10000 Mbps: upload and download are independently capped at this rate, shared by all traffic on the port; 0 disables the cap. Linux tc rules are applied after commit and reconciled every minute. settings, streamSettings, and sniffing may be sent as nested JSON objects (preferred) or as JSON-encoded strings (legacy). VLESS empty fallback arrays are normalized away; nonempty fallbacks cannot be combined with active server decryption.',
         body: inboundBody,
         errorResponse: '{\n  "success": false,\n  "msg": "Port 443 is already in use"\n}',
       },
@@ -332,7 +332,7 @@ export const sections: readonly Section[] = [
         method: 'POST',
         path: '/panel/api/inbounds/update/:id',
         summary:
-          'Replace an inbound’s configuration. Body shape mirrors /add, but the inbound keeps its stored client list and enable flag: settings.clients and enable in the body are ignored. Manage clients through the /panel/api/clients endpoints and toggle the inbound with /setEnable. Remove effective fallback rules before enabling VLESS server decryption.',
+          'Replace an inbound’s configuration. Body shape mirrors /add, including speedLimit (0 clears the port cap; omitted defaults to 0), but the inbound keeps its stored client list and enable flag: settings.clients and enable in the body are ignored. Manage clients through the /panel/api/clients endpoints and toggle the inbound with /setEnable. Remove effective fallback rules before enabling VLESS server decryption.',
         params: [{ name: 'id', in: 'path', type: 'number', desc: 'Inbound ID.' }],
         body: inboundBody,
       },

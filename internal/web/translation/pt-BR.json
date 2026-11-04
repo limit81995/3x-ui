@@ -721,6 +721,8 @@
         "shareAddr": "Endereço de compartilhamento personalizado",
         "shareAddrHelp": "Usado apenas quando a estratégia de endereço de compartilhamento é Personalizada. Informe um host ou IP sem esquema nem porta.",
         "subSortIndex": "Ordem na assinatura",
+        "speedLimit": "Limite de velocidade da porta",
+        "speedLimitHelp": "Mbps por direção, compartilhados por todos os usuários da porta em TCP/UDP e IPv4/IPv6. Upload e download são limitados separadamente. 0 = ilimitado. Aplicado ao salvar; as regras reais são verificadas a cada minuto.",
         "subSortIndexHelp": "Posição dos links desta entrada na saída da assinatura (página de assinatura e aplicativos cliente). Valores menores vêm primeiro; valores iguais mantêm a ordem de criação. Não afeta a lista de entradas do painel.",
         "excludeFromSub": "Excluir das assinaturas",
         "excludeFromSubHelp": "Oculta os links deste inbound na saída de assinatura, mantendo o inbound habilitado e operacional.",

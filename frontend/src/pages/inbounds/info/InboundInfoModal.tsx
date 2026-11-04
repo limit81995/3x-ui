@@ -642,6 +642,12 @@ export default function InboundInfoModal({
             <Tag>{dbInbound.port}</Tag>
           </dd>
         </div>
+        <div className="info-row">
+          <dt>{t('pages.inbounds.form.speedLimit')}</dt>
+          <dd>
+            {(dbInbound.speedLimit ?? 0) > 0 ? `${dbInbound.speedLimit} Mbps` : t('unlimited')}
+          </dd>
+        </div>
 
         {(dbInbound.isVMess || dbInbound.isVLess || dbInbound.isTrojan || dbInbound.isSS) && (
           <>

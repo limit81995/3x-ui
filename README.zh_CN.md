@@ -95,6 +95,28 @@ bash <(curl -Ls https://raw.githubusercontent.com/mhsanaei/3x-ui/master/install.
 
 完整文档（安装、配置、运维以及完整的 API 参考）请访问 **[docs.sanaei.dev](https://docs.sanaei.dev/zh)**。
 
+### HTB 分支原生安装（不使用 Docker）
+
+上面的官方安装命令安装上游版本。本分支的 HTB 代码需要使用本分支编译的程序，不能仅下载本仓库的脚本后安装上游安装包。
+
+构建脚本支持 amd64、arm64、armv7、armv6 和 386。在 Linux 构建机准备 Go 1.27+、Node.js 26+、npm、musl C 编译器（例如 `musl-tools` 提供的 `musl-gcc`）、curl、unzip、tar 后，进入本仓库的 `dev` 分支运行：
+
+```bash
+bash scripts/build-native.sh
+```
+
+输出位于 `dist/native/`，包含当前架构的 `x-ui-linux-<架构>.tar.gz`、同名 `.sha256` 校验文件和 `install.sh`。程序使用 musl 静态链接；可通过 `XUI_NATIVE_CC` 指定对应架构的 musl 编译器。构建过程不需要 Docker，复用 `DockerInit.sh` 下载 Xray 等运行资源。将这三个文件复制到目标 Linux 主机，在其目录中运行（以下以 amd64 为例）：
+
+```bash
+sudo env XUI_INSTALL_ARCHIVE="$PWD/x-ui-linux-amd64.tar.gz" bash ./install.sh
+```
+
+脚本会验证安装包及必需文件，安装发行版对应的 tc/kmod 依赖，配置 HTB/IFB 等模块开机加载，并沿用原有 systemd/OpenRC 安装流程。控制脚本和服务文件从同一个本地包读取，不会下载上游程序覆盖本分支。目标主机仍需支持这些内核功能；安装用户态依赖不能替代缺失的内核支持。
+
+远程安装源由 `XUI_RELEASE_REPO` 指定，默认 `limit81995/3x-ui`；`dev-latest` 的脚本分支默认 `dev`，可用 `XUI_RELEASE_REF` 覆盖。远程安装必须先在指定仓库发布包含本分支代码的对应 Release；仅推送 `dev` 不会自动产生安装包。目前本地包安装不依赖发布 Release。
+
+本分支升级也使用同样的本地包安装命令，保留原数据库。原有管理菜单/面板的在线更新入口仍跟随上游，使用它们会换回上游程序；本次未改动这些业务入口。
+
 ### 无人值守安装
 
 安装程序也可以**非交互式**运行，适用于 cloud-init。
@@ -149,6 +171,29 @@ docker compose --profile postgres up -d
 docker run -d --cap-add=NET_ADMIN --cap-add=NET_RAW ... ghcr.io/mhsanaei/3x-ui
 ```
 
+### 入站端口限速（tc）
+
+新增和编辑入站时可设置“端口限速”，范围为 `0–10000 Mbps`；`0` 表示不限速。
+同一端口的所有用户及 TCP/UDP、IPv4/IPv6 流量共享额度，上传、下载各有独立额度。
+例如设置 `100`，表示上传合计最多约 100 Mbps，下载合计最多约 100 Mbps。
+实现使用 Linux `tc clsact + flower + mirred → IFB + HTB + FQ-CoDel`：上传、下载各使用一个 IFB，每个端口有独立的 HTB 类别，`rate = ceil = 配置速率`。超过即时速率的报文先排队发送，不再使用 police 丢弃超额报文。队列拥塞时仍可能丢包；实际应用层速度还受协议开销、链路和对端影响，不保证测速一定达到设定值。它不是每用户限速或流量配额。
+
+配置保存在数据库中，在入站列表和详情中显示。保存后后台立即尝试应用；面板启动时及每分钟重新读取内核实际规则，修复速率变化、丢失或被修改的分类规则。
+取消限速、禁用、删除、到期、耗尽配额或更换端口后，会移除不再使用的规则。旧版本 police 动作会自动迁移并清理，其内核引用的释放可能延迟到下一次校准。
+多个启用的入站若在同一节点共用端口，即使监听地址或协议不同，也必须设置相同的限速数值。
+
+镜像已安装 `iproute2-tc`，官方 Compose 已提供 `NET_ADMIN`，无需为 HTB 修改主 Compose 文件；即使关闭 Fail2ban，启用端口限速时仍须保留 `NET_ADMIN`。宿主机内核须支持 `ifb`、`sch_htb`、`sch_fq_codel`、`sch_ingress`（clsact）、`cls_flower`、`act_mirred`；二进制部署需安装系统的 `iproute2`/`tc` 并提供 `CAP_NET_ADMIN`。
+默认作用于当前网络命名空间中具有 IPv4/IPv6 默认路由的接口。多出口、策略路由或其他公网接口可设置 `XUI_TC_INTERFACES=eth0,eth1`，只选择真实承载入站流量的接口，避免同一报文经过多个选中接口而重复计量。
+bridge 模式匹配容器内的监听端口，host 模式匹配宿主机端口；若前面有反向代理、隧道或端口转发，应在实际承载该端口流量的位置设置规则。
+回环和 Unix socket 入站不支持此设置，应限制其公网父入站。
+
+API 的 `POST /panel/api/inbounds/add`、`POST /panel/api/inbounds/update/:id` 接受整数 `speedLimit`，列表和详情接口返回该字段。例如在原有入站请求中添加 `"speedLimit": 100`；更新时传 `0` 或省略此字段会取消限速。
+远端入站由实际承载流量的节点执行，主面板与节点均需升级到支持此字段的版本。
+
+物理接口规则使用优先级 `48100–48103` 和 filter handle `0x3a00xxxx`，请为本面板保留这段编号。IFB 接口 `xui-tc-up`、`xui-tc-down` 由面板独占管理，root handle 为 `3a00:`，类别编号为端口的十六进制值，接口 alias 用于确认所有权；同名但未标记归属的接口不会被接管。同一个网络命名空间只应由一个面板管理这段规则。
+校准不替换物理接口现有 root qdisc，也不删除其他 clsact 规则；只在面板自己的 IFB 上维护 HTB 和队列。需要先执行的 tc ACL/打标规则应放在优先级 `48100` 之前，因为 redirect 会终止当前分类链。如果接口已有旧式 ingress qdisc，需先自行规划迁移为 clsact。
+应用失败会在面板日志中记录 `tc speed limit: reconciliation failed` 并自动重试；保存成功表示配置已持久化，不代表内核一定已应用。
+
 ## 环境变量
 
 | 变量 | 说明 | 默认值 |
@@ -160,6 +205,7 @@ docker run -d --cap-add=NET_ADMIN --cap-add=NET_RAW ... ghcr.io/mhsanaei/3x-ui
 | `XUI_DB_MAX_IDLE_CONNS` | 最大空闲连接数（PostgreSQL 连接池） | — |
 | `XUI_INIT_WEB_BASE_PATH` | Web 面板的初始 URI 路径 | `/` |
 | `XUI_ENABLE_FAIL2BAN` | 启用基于 Fail2ban 的 IP 限制 | `true` |
+| `XUI_TC_INTERFACES` | 端口限速接口，多个接口用逗号分隔 | IPv4/IPv6 默认路由接口 |
 | `XUI_LOG_LEVEL` | 日志级别（`debug`、`info`、`warning`、`error`） | `info` |
 | `XUI_DEBUG` | 启用调试模式 | `false` |
 | `XUI_TUNNEL_HEALTH_MONITOR` | 启用隧道健康监控（探测某个 URL，在连续多次失败后重启 xray；重启会断开所有客户端） | `false` |

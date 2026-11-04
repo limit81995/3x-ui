@@ -740,6 +740,7 @@ export interface Inbound {
   shareAddr: string;
   shareAddrStrategy: string;
   sniffing: unknown;
+  speedLimit: number;
   streamSettings: unknown;
   subSortIndex: number;
   tag: string;

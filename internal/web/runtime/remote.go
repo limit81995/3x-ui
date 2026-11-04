@@ -896,6 +896,7 @@ func (r *Remote) PushGlobalClientTraffics(ctx context.Context, masterGuid string
 
 func wireInbound(ib *model.Inbound, remoteNodeID int) url.Values {
 	v := url.Values{}
+	v.Set("speedLimit", strconv.Itoa(ib.SpeedLimit))
 	v.Set("total", strconv.FormatInt(ib.Total, 10))
 	v.Set("remark", ib.Remark)
 	v.Set("subSortIndex", strconv.Itoa(ib.SubSortIndex))

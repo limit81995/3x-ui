@@ -723,6 +723,8 @@
         "shareAddr": "Custom share address",
         "shareAddrHelp": "Used only when the share address strategy is Custom. Enter a host or IP without a scheme or port.",
         "subSortIndex": "Subscription sort order",
+        "speedLimit": "Port speed limit",
+        "speedLimitHelp": "Mbps per direction, shared by all users on this port across TCP/UDP and IPv4/IPv6. 0 = unlimited. Upload and download each have this limit. Changes apply after saving; actual rules are checked every minute.",
         "subSortIndexHelp": "Position of this inbound's links in subscription output (sub page and client apps). Lower values come first; equal values keep creation order. Does not affect the panel inbound list.",
         "excludeFromSub": "Exclude from subscriptions",
         "excludeFromSubHelp": "Hide this inbound's links from subscription output while keeping the inbound enabled and operational.",

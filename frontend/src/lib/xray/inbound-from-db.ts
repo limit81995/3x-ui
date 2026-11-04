@@ -18,6 +18,7 @@ export interface DbInboundLike {
   up?: number;
   down?: number;
   total?: number;
+  speedLimit?: number;
   shareAddrStrategy?: string;
   shareAddr?: string;
 }
@@ -54,6 +55,7 @@ export function inboundFromDb(raw: DbInboundLike): Inbound {
     up: raw.up ?? 0,
     down: raw.down ?? 0,
     total: raw.total ?? 0,
+    speedLimit: raw.speedLimit ?? 0,
     shareAddrStrategy: raw.shareAddrStrategy ?? 'node',
     shareAddr: raw.shareAddr ?? '',
     settings,

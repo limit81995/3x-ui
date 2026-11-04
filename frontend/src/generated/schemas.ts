@@ -3173,7 +3173,6 @@ export const SCHEMAS: Record<string, unknown> = {
         "type": "integer"
       },
       "listen": {
-        "description": "Xray configuration fields",
         "type": "string"
       },
       "nodeId": {
@@ -3228,6 +3227,13 @@ export const SCHEMAS: Record<string, unknown> = {
         "type": "string"
       },
       "sniffing": {},
+      "speedLimit": {
+        "description": "Xray configuration fields\nPort-wide Mbps cap in each direction; 0 disables tc limiting",
+        "example": 0,
+        "maximum": 10000,
+        "minimum": 0,
+        "type": "integer"
+      },
       "streamSettings": {},
       "subSortIndex": {
         "description": "Sort order of this inbound's links in subscription output only (lower first; negatives allowed; 0/omitted → 1; ties by id)",
@@ -3284,6 +3290,7 @@ export const SCHEMAS: Record<string, unknown> = {
       "shareAddr",
       "shareAddrStrategy",
       "sniffing",
+      "speedLimit",
       "streamSettings",
       "subSortIndex",
       "tag",

@@ -817,6 +817,7 @@ func (s *InboundService) setRemoteTrafficLocked(nodeID int, snap *runtime.Traffi
 				Tag:                  chosenTag,
 				Listen:               snapIb.Listen,
 				Port:                 snapIb.Port,
+				SpeedLimit:           snapIb.SpeedLimit,
 				Protocol:             snapIb.Protocol,
 				Settings:             snapIb.Settings,
 				StreamSettings:       snapIb.StreamSettings,

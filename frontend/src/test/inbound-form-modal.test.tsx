@@ -336,6 +336,40 @@ describe('InboundFormModal', () => {
     });
   });
 
+  it('shows and submits the port speed limit when adding an inbound', async () => {
+    const post = vi.mocked(HttpUtil.post);
+    post.mockClear();
+    renderModal();
+    const input = await screen.findByLabelText('Port speed limit');
+    expect((input as HTMLInputElement).value).toBe('0');
+    fireEvent.change(input, { target: { value: '100' } });
+    fireEvent.click(primaryButton());
+    await waitFor(() => {
+      expect(post).toHaveBeenCalledWith(
+        '/panel/api/inbounds/add',
+        expect.objectContaining({ speedLimit: 100 }),
+      );
+    });
+  });
+
+  it('loads and clears the port speed limit when editing an inbound', async () => {
+    const post = vi.mocked(HttpUtil.post);
+    post.mockClear();
+    const inbound = cloneLikeVlessInbound('example.com:443');
+    inbound.speedLimit = 100;
+    await renderCloneLikeEdit(inbound);
+    const input = await screen.findByLabelText('Port speed limit');
+    expect((input as HTMLInputElement).value).toBe('100');
+    fireEvent.change(input, { target: { value: '0' } });
+    fireEvent.click(primaryButton());
+    await waitFor(() => {
+      expect(post).toHaveBeenCalledWith(
+        '/panel/api/inbounds/update/42',
+        expect.objectContaining({ speedLimit: 0 }),
+      );
+    });
+  });
+
   // The core reads an XDRIVE inbound's TLS/REALITY as the storage API's client TLS, so
   // switching a REALITY inbound to XDRIVE must store security none with its secrets.
   it('switches a REALITY inbound to an XDRIVE stream with security none', async () => {

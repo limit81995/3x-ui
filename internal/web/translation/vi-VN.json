@@ -721,6 +721,8 @@
         "shareAddr": "Địa chỉ chia sẻ tùy chỉnh",
         "shareAddrHelp": "Chỉ dùng khi chiến lược địa chỉ chia sẻ là Tùy chỉnh. Nhập host hoặc IP không kèm giao thức hoặc cổng.",
         "subSortIndex": "Thứ tự trong gói đăng ký",
+        "speedLimit": "Giới hạn tốc độ cổng",
+        "speedLimitHelp": "Mbps cho mỗi chiều, dùng chung cho tất cả người dùng trên cổng qua TCP/UDP và IPv4/IPv6. Tải lên và tải xuống được giới hạn riêng. 0 = không giới hạn. Áp dụng sau khi lưu; các quy tắc thực tế được kiểm tra mỗi phút.",
         "subSortIndexHelp": "Vị trí liên kết của inbound này trong nội dung gói đăng ký (trang đăng ký và ứng dụng khách). Giá trị nhỏ hơn xếp trước; giá trị bằng nhau giữ thứ tự tạo. Không ảnh hưởng đến danh sách inbound trong bảng điều khiển.",
         "excludeFromSub": "Loại khỏi subscription",
         "excludeFromSubHelp": "Ẩn liên kết inbound này khỏi đầu ra subscription nhưng vẫn giữ inbound được bật và hoạt động.",

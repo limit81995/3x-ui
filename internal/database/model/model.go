@@ -67,6 +67,7 @@ type Inbound struct {
 	ClientStats          []xray.ClientTraffic `gorm:"foreignKey:InboundId;references:Id" json:"clientStats" form:"clientStats"`                                                                                     // Client traffic statistics
 
 	// Xray configuration fields
+	SpeedLimit        int      `json:"speedLimit" form:"speedLimit" gorm:"not null;default:0" validate:"gte=0,lte=10000" example:"0"` // Port-wide Mbps cap in each direction; 0 disables tc limiting
 	Listen            string   `json:"listen" form:"listen"`
 	Port              int      `json:"port" form:"port" validate:"gte=0,lte=65535" example:"443"`
 	Protocol          Protocol `json:"protocol" form:"protocol" validate:"required,oneof=vmess vless trojan shadowsocks wireguard hysteria http mixed tunnel tun mtproto amneziawg tuic masque" example:"vless"`
