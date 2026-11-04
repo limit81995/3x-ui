@@ -73,6 +73,64 @@
 
 ## 快速开始
 
+本仓库 `dev` 分支包含入站端口 HTB 限速功能。**`install.sh` 只安装已编译的程序，不会自动编译源码。** 原生安装不需要 Docker，是否需要先构建取决于手上已有的文件：
+
+| 已有内容 | 是否需要自己构建 | 安装方式 |
+| --- | --- | --- |
+| 本分支源码 | 需要，在构建机执行一次 | 构建安装包后，用 `XUI_INSTALL_ARCHIVE` 安装 |
+| 本分支安装包、校验文件和安装脚本 | 不需要 | 在目标服务器用 `XUI_INSTALL_ARCHIVE` 安装 |
+| 本分支已发布的对应 Release | 不需要 | 由脚本下载该 Release 的安装包；须先完成发布 |
+
+仅推送源码到 `dev` 分支不会自动发布安装包。要安装当前源码中的 HTB 功能，请按下面的本地包流程操作。
+
+### HTB 分支原生安装（不使用 Docker）
+
+**1. 在 Linux 构建机生成安装包**
+
+准备 Go（版本要求见 `go.mod`，当前为 1.27.3+）、Node.js 26+、npm 11+、Git、musl C 编译器（例如 `musl-tools` 提供的 `musl-gcc`）、curl、unzip、tar 和 sha256sum。构建过程中需要联网下载依赖和运行资源。
+
+首次获取源码并构建：
+
+```bash
+git clone --branch dev https://github.com/limit81995/3x-ui.git
+cd 3x-ui
+bash scripts/build-native.sh
+```
+
+已有源码时，在仓库目录运行 `bash scripts/build-native.sh` 即可。该脚本会构建前端和 Go 程序、下载 Xray 等运行资源并打包；内部复用的 `DockerInit.sh` 只是资源下载脚本，不需要 Docker。
+
+输出位于 `dist/native/`，包含三个文件：
+
+- `x-ui-linux-<架构>.tar.gz`：程序、前端和运行资源。
+- `x-ui-linux-<架构>.tar.gz.sha256`：安装包校验文件。
+- `install.sh`：配套安装脚本。
+
+默认构建本机架构，支持 amd64、arm64、armv7、armv6 和 386。程序使用 musl 静态链接；跨架构构建需配置对应的 Go 目标架构和 musl 编译器，可通过 `XUI_NATIVE_CC` 指定编译器。安装包架构必须与目标服务器一致。
+
+**2. 在目标 Linux 服务器安装**
+
+目标服务器**不需要 Go、Node.js、npm 或编译器**。将上述三个文件复制到服务器并进入其存放目录；若直接在构建机上安装，则先执行 `cd dist/native`。以下以 amd64 为例：
+
+```bash
+sudo env XUI_INSTALL_ARCHIVE="$PWD/x-ui-linux-amd64.tar.gz" bash ./install.sh
+```
+
+已经拿到这三个文件时，直接执行这一步，无需重新构建。每个新版本只需为所用架构构建一次，安装包可复用于多台相同架构的服务器。
+
+脚本会验证安装包及必需文件，安装发行版对应的 tc/kmod 依赖，配置 HTB/IFB 等模块开机加载，并沿用原有 systemd/OpenRC 安装流程。控制脚本和服务文件从同一个本地包读取，不会下载上游程序覆盖本分支。目标主机仍需支持这些内核功能；安装用户态依赖不能替代缺失的内核支持。
+
+本地包安装仍需联网安装系统依赖。首次安装完成后，按脚本输出的面板地址、账号和密码登录；也可运行 `x-ui` 管理服务和登录凭据。
+
+**3. 后续升级或使用 Release 安装**
+
+升级时，从更新后的源码重新构建（或获取本分支的新安装包），再执行同样的本地包安装命令，保留原数据库。原有管理菜单/面板的在线更新入口仍跟随上游，使用它们会换回上游程序。
+
+若要通过远程脚本下载程序，需先在指定仓库发布包含本分支代码和对应架构安装包、校验文件的 Release。远程安装源由 `XUI_RELEASE_REPO` 指定，默认 `limit81995/3x-ui`；`dev-latest` 的脚本分支默认 `dev`，可用 `XUI_RELEASE_REF` 覆盖。这里的 `dev-latest` 是 Release 标签，不表示脚本会拉取 `dev` 源码编译。本地包安装不依赖发布 Release。
+
+### 上游版本安装
+
+以下命令安装 `mhsanaei/3x-ui` 的上游版本，不包含本分支的 HTB 改动。需要端口限速时，请使用上面的本分支安装流程。
+
 ```bash
 bash <(curl -Ls https://raw.githubusercontent.com/mhsanaei/3x-ui/master/install.sh)
 ```
@@ -83,7 +141,7 @@ bash <(curl -Ls https://raw.githubusercontent.com/mhsanaei/3x-ui/master/install.
 bash <(curl -Ls https://raw.githubusercontent.com/mhsanaei/3x-ui/master/install.sh) v3.7.0
 ```
 
-若要安装滚动更新的 **dev** 版本（来自 `main` 的最新逐次提交预发布版本，而非稳定版本），请传入 `dev-latest`：
+若要安装上游滚动更新的 **dev** 版本（来自上游 `main` 的最新逐次提交预发布版本，而非本仓库的 `dev` 分支），请传入 `dev-latest`：
 
 ```bash
 bash <(curl -Ls https://raw.githubusercontent.com/mhsanaei/3x-ui/master/install.sh) dev-latest
@@ -94,28 +152,6 @@ bash <(curl -Ls https://raw.githubusercontent.com/mhsanaei/3x-ui/master/install.
 每个发布资源都会在其旁边附带一个 `.sha256` 校验和。`install.sh` 和更新程序都会据此校验压缩包，不匹配时中止。
 
 完整文档（安装、配置、运维以及完整的 API 参考）请访问 **[docs.sanaei.dev](https://docs.sanaei.dev/zh)**。
-
-### HTB 分支原生安装（不使用 Docker）
-
-上面的官方安装命令安装上游版本。本分支的 HTB 代码需要使用本分支编译的程序，不能仅下载本仓库的脚本后安装上游安装包。
-
-构建脚本支持 amd64、arm64、armv7、armv6 和 386。在 Linux 构建机准备 Go 1.27+、Node.js 26+、npm、musl C 编译器（例如 `musl-tools` 提供的 `musl-gcc`）、curl、unzip、tar 后，进入本仓库的 `dev` 分支运行：
-
-```bash
-bash scripts/build-native.sh
-```
-
-输出位于 `dist/native/`，包含当前架构的 `x-ui-linux-<架构>.tar.gz`、同名 `.sha256` 校验文件和 `install.sh`。程序使用 musl 静态链接；可通过 `XUI_NATIVE_CC` 指定对应架构的 musl 编译器。构建过程不需要 Docker，复用 `DockerInit.sh` 下载 Xray 等运行资源。将这三个文件复制到目标 Linux 主机，在其目录中运行（以下以 amd64 为例）：
-
-```bash
-sudo env XUI_INSTALL_ARCHIVE="$PWD/x-ui-linux-amd64.tar.gz" bash ./install.sh
-```
-
-脚本会验证安装包及必需文件，安装发行版对应的 tc/kmod 依赖，配置 HTB/IFB 等模块开机加载，并沿用原有 systemd/OpenRC 安装流程。控制脚本和服务文件从同一个本地包读取，不会下载上游程序覆盖本分支。目标主机仍需支持这些内核功能；安装用户态依赖不能替代缺失的内核支持。
-
-远程安装源由 `XUI_RELEASE_REPO` 指定，默认 `limit81995/3x-ui`；`dev-latest` 的脚本分支默认 `dev`，可用 `XUI_RELEASE_REF` 覆盖。远程安装必须先在指定仓库发布包含本分支代码的对应 Release；仅推送 `dev` 不会自动产生安装包。目前本地包安装不依赖发布 Release。
-
-本分支升级也使用同样的本地包安装命令，保留原数据库。原有管理菜单/面板的在线更新入口仍跟随上游，使用它们会换回上游程序；本次未改动这些业务入口。
 
 ### 无人值守安装
 
