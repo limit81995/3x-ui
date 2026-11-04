@@ -95,6 +95,28 @@ bash <(curl -Ls https://raw.githubusercontent.com/mhsanaei/3x-ui/master/install.
 
 完整文档（安装、配置、运维以及完整的 API 参考）请访问 **[docs.sanaei.dev](https://docs.sanaei.dev/zh)**。
 
+### HTB 分支原生安装（不使用 Docker）
+
+上面的官方安装命令安装上游版本。本分支的 HTB 代码需要使用本分支编译的程序，不能仅下载本仓库的脚本后安装上游安装包。
+
+构建脚本支持 amd64、arm64、armv7、armv6 和 386。在 Linux 构建机准备 Go 1.27+、Node.js 26+、npm、musl C 编译器（例如 `musl-tools` 提供的 `musl-gcc`）、curl、unzip、tar 后，进入本仓库的 `dev` 分支运行：
+
+```bash
+bash scripts/build-native.sh
+```
+
+输出位于 `dist/native/`，包含当前架构的 `x-ui-linux-<架构>.tar.gz`、同名 `.sha256` 校验文件和 `install.sh`。程序使用 musl 静态链接；可通过 `XUI_NATIVE_CC` 指定对应架构的 musl 编译器。构建过程不需要 Docker，复用 `DockerInit.sh` 下载 Xray 等运行资源。将这三个文件复制到目标 Linux 主机，在其目录中运行（以下以 amd64 为例）：
+
+```bash
+sudo env XUI_INSTALL_ARCHIVE="$PWD/x-ui-linux-amd64.tar.gz" bash ./install.sh
+```
+
+脚本会验证安装包及必需文件，安装发行版对应的 tc/kmod 依赖，配置 HTB/IFB 等模块开机加载，并沿用原有 systemd/OpenRC 安装流程。控制脚本和服务文件从同一个本地包读取，不会下载上游程序覆盖本分支。目标主机仍需支持这些内核功能；安装用户态依赖不能替代缺失的内核支持。
+
+远程安装源由 `XUI_RELEASE_REPO` 指定，默认 `limit81995/3x-ui`；`dev-latest` 的脚本分支默认 `dev`，可用 `XUI_RELEASE_REF` 覆盖。远程安装必须先在指定仓库发布包含本分支代码的对应 Release；仅推送 `dev` 不会自动产生安装包。目前本地包安装不依赖发布 Release。
+
+本分支升级也使用同样的本地包安装命令，保留原数据库。原有管理菜单/面板的在线更新入口仍跟随上游，使用它们会换回上游程序；本次未改动这些业务入口。
+
 ### 无人值守安装
 
 安装程序也可以**非交互式**运行，适用于 cloud-init。
@@ -160,7 +182,7 @@ docker run -d --cap-add=NET_ADMIN --cap-add=NET_RAW ... ghcr.io/mhsanaei/3x-ui
 取消限速、禁用、删除、到期、耗尽配额或更换端口后，会移除不再使用的规则。旧版本 police 动作会自动迁移并清理，其内核引用的释放可能延迟到下一次校准。
 多个启用的入站若在同一节点共用端口，即使监听地址或协议不同，也必须设置相同的限速数值。
 
-镜像已安装 `iproute2-tc`，Compose 已提供 `NET_ADMIN`。宿主机内核须支持 `ifb`、`sch_htb`、`sch_fq_codel`、`sch_ingress`（clsact）、`cls_flower`、`act_mirred`；二进制部署需安装系统的 `iproute2`/`tc` 并提供 `CAP_NET_ADMIN`。
+镜像已安装 `iproute2-tc`，官方 Compose 已提供 `NET_ADMIN`，无需为 HTB 修改主 Compose 文件；即使关闭 Fail2ban，启用端口限速时仍须保留 `NET_ADMIN`。本地 host 模式测试使用独立的 `docker-compose.tc-local.yml`。宿主机内核须支持 `ifb`、`sch_htb`、`sch_fq_codel`、`sch_ingress`（clsact）、`cls_flower`、`act_mirred`；二进制部署需安装系统的 `iproute2`/`tc` 并提供 `CAP_NET_ADMIN`。
 默认作用于当前网络命名空间中具有 IPv4/IPv6 默认路由的接口。多出口、策略路由或其他公网接口可设置 `XUI_TC_INTERFACES=eth0,eth1`，只选择真实承载入站流量的接口，避免同一报文经过多个选中接口而重复计量。
 bridge 模式匹配容器内的监听端口，host 模式匹配宿主机端口；若前面有反向代理、隧道或端口转发，应在实际承载该端口流量的位置设置规则。
 回环和 Unix socket 入站不支持此设置，应限制其公网父入站。
