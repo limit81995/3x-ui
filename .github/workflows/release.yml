@@ -67,7 +67,13 @@ jobs:
       - name: Build 3X-UI
         run: |
           CURL_RETRY="--retry 5 --retry-all-errors --retry-delay 3"
-          fetch() { wget -q --tries=5 --waitretry=10 --retry-on-http-error=429,500,502,503 "$@"; }
+          fetch() {
+            echo "Downloading: $*"
+            wget --progress=dot:giga --tries=5 --waitretry=10 \
+              --connect-timeout=15 --read-timeout=60 \
+              --retry-connrefused --retry-on-host-error \
+              --retry-on-http-error=408,429,500,502,503,504 "$@"
+          }
           export CGO_ENABLED=1
           export GOOS=linux
           export GOARCH=${{ matrix.platform }}
