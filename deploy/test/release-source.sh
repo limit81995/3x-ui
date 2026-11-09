@@ -24,8 +24,8 @@ for script in install.sh update.sh x-ui.sh; do
     (
         unset XUI_RELEASE_REPO XUI_RELEASE_REF
         load_source "$script"
-        [[ "$XUI_RELEASE_REPO" == limit81995/3x-ui && "$XUI_RELEASE_REF" == dev ]]
-        bash -c '[[ "$XUI_RELEASE_REPO" == limit81995/3x-ui && "$XUI_RELEASE_REF" == dev ]]'
+        [[ "$XUI_RELEASE_REPO" == limit81995/3x-ui && "$XUI_RELEASE_REF" == main ]]
+        bash -c '[[ "$XUI_RELEASE_REPO" == limit81995/3x-ui && "$XUI_RELEASE_REF" == main ]]'
     )
     if (export XUI_RELEASE_REPO='owner/repo?escape'; load_source "$script") > /dev/null 2>&1; then
         echo "Accepted invalid repository in $script" >&2; exit 1
@@ -35,8 +35,8 @@ for script in install.sh update.sh x-ui.sh; do
     fi
 done
 
-mkdir -p "$test_dir/www/limit81995/3x-ui/dev" "$test_dir/www/limit81995/3x-ui/v3.7.0" "$test_dir/www/example/panel/release/test"
-for location in limit81995/3x-ui/dev example/panel/release/test; do
+mkdir -p "$test_dir/www/limit81995/3x-ui/main" "$test_dir/www/limit81995/3x-ui/v3.7.0" "$test_dir/www/example/panel/release/test"
+for location in limit81995/3x-ui/main example/panel/release/test; do
     for script in install.sh update.sh; do
         cat > "$test_dir/www/$location/$script" <<'SCRIPT'
 #!/usr/bin/env bash
@@ -45,7 +45,7 @@ SCRIPT
     done
 done
 printf 'menu\n' > "$test_dir/www/limit81995/3x-ui/v3.7.0/x-ui.sh"
-touch "$test_dir/www/limit81995/3x-ui/dev/empty.sh"
+touch "$test_dir/www/limit81995/3x-ui/main/empty.sh"
 python3 - "$test_dir" <<'PY' > "$test_dir/http.log" 2>&1 &
 import functools, http.server, pathlib, sys
 root = pathlib.Path(sys.argv[1])
@@ -82,14 +82,14 @@ load_function update_dev
 unset XUI_RELEASE_REPO XUI_RELEASE_REF XUI_UPDATE_TAG
 load_source x-ui.sh
 run_repo_script install.sh v3.7.0 > "$test_dir/actual"
-printf '%s\n' limit81995/3x-ui dev stable v3.7.0 > "$test_dir/expected"
+printf '%s\n' limit81995/3x-ui main stable v3.7.0 > "$test_dir/expected"
 diff -u "$test_dir/expected" "$test_dir/actual"
 XUI_UPDATE_TAG=dev-latest run_repo_script update.sh > "$test_dir/actual"
-printf '%s\n' limit81995/3x-ui dev dev-latest > "$test_dir/expected"
+printf '%s\n' limit81995/3x-ui main dev-latest > "$test_dir/expected"
 diff -u "$test_dir/expected" "$test_dir/actual"
 update_dev 0 > "$test_dir/actual"
 diff -u "$test_dir/expected" "$test_dir/actual"
-printf '%s\n' limit81995/3x-ui dev stable > "$test_dir/expected"
+printf '%s\n' limit81995/3x-ui main stable > "$test_dir/expected"
 update 0 > "$test_dir/actual"
 diff -u "$test_dir/expected" "$test_dir/actual"
 install 0 > "$test_dir/actual"
@@ -107,7 +107,7 @@ run_repo_script update.sh > "$test_dir/actual"
 printf '%s\n' example/panel release/test stable > "$test_dir/expected"
 diff -u "$test_dir/expected" "$test_dir/actual"
 
-export XUI_RELEASE_REPO=limit81995/3x-ui XUI_RELEASE_REF=dev
+export XUI_RELEASE_REPO=limit81995/3x-ui XUI_RELEASE_REF=main
 export yellow='' plain=''
 xui_folder="$test_dir/panel"
 mkdir -p "$xui_folder"
@@ -119,7 +119,7 @@ chmod +x "$xui_folder/x-ui"
 echo 3.7.0 > "$xui_folder/version"
 [[ $(installed_script_url) == https://raw.githubusercontent.com/limit81995/3x-ui/v3.7.0/x-ui.sh ]]
 echo dev+12345678 > "$xui_folder/version"
-[[ $(installed_script_url) == https://raw.githubusercontent.com/limit81995/3x-ui/dev/x-ui.sh ]]
+[[ $(installed_script_url) == https://raw.githubusercontent.com/limit81995/3x-ui/main/x-ui.sh ]]
 if grep -Eiq '(raw.githubusercontent.com|github.com/repos|github.com)/mhsanaei/3x-ui' "$test_dir/requests"; then
     echo 'A download escaped to upstream' >&2; exit 1
 fi

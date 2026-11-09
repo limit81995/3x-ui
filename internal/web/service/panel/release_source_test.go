@@ -19,7 +19,7 @@ func TestPanelReleaseSourceDownloads(t *testing.T) {
 	t.Setenv("XUI_DB_FOLDER", t.TempDir())
 	dbtest.InitDB(t, config.GetDBPath())
 	for _, tc := range []struct{ name, repo, ref, wantRepo, wantRef string }{
-		{"default fork", "", "", "limit81995/3x-ui", "dev"},
+		{"default fork", "", "", "limit81995/3x-ui", "main"},
 		{"explicit source", "example/panel", "release/test", "example/panel", "release/test"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
@@ -82,12 +82,15 @@ func TestPanelReleaseSourceDownloads(t *testing.T) {
 			if _, err := fetchLatestPanelVersion(); err == nil {
 				t.Fatal("missing release must fail")
 			}
+			if _, err := fetchPanelRelease("dev-latest"); err == nil {
+				t.Fatal("missing dev release must fail")
+			}
 			if _, err := downloadPanelUpdater(); err == nil {
 				t.Fatal("missing updater must fail")
 			}
 			mu.Lock()
 			defer mu.Unlock()
-			if len(requests) != 2 {
+			if len(requests) != 3 {
 				t.Fatalf("unexpected fallback requests: %v", requests)
 			}
 			for _, request := range requests {

@@ -113,9 +113,9 @@ red= green= yellow= blue= plain=
 xui_folder=$TEST_SETTINGS_DIR
 xui_service=$TEST_SETTINGS_DIR
 tag_version=test
-script_ref=dev
+script_ref=main
 XUI_RELEASE_REPO=limit81995/3x-ui
-XUI_RELEASE_REF=dev
+XUI_RELEASE_REF=main
 NONINTERACTIVE=1
 release=ubuntu
 SSL_SCHEME=https
@@ -160,7 +160,7 @@ setup_fail2ban() { printf 'fail2ban\n' >> "$TEST_SETTINGS_DIR/lifecycle"; }
 		}
 	}
 	cmd.Env = append(cmd.Env, "TEST_SETTINGS_DIR="+dir, "TEST_READ_MODE="+mode,
-		"XUI_DB_TYPE=sqlite", "XUI_PANEL_PORT=41234")
+		"XUI_DB_TYPE=sqlite", "XUI_PANEL_PORT=41234", "XUI_RELEASE_REPO=limit81995/3x-ui")
 	out, err := cmd.CombinedOutput()
 	return dir, string(out), err
 }

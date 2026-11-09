@@ -44,7 +44,7 @@ const (
 	maxPanelUpdaterBytes = 2 << 20
 	maxPanelReleaseBytes = 2 << 20
 	// devReleaseTag is the fixed-tag rolling pre-release the CI force-moves to the
-	// published development commit; the dev update channel installs from it.
+	// newest main commit; the dev update channel installs from it.
 	devReleaseTag = "dev-latest"
 
 	updateStatePending = "pending"

@@ -33,8 +33,10 @@ func desiredFilters(link netlink.Link, limits []Limit, upload bool, target netli
 		for family, eth := range []uint16{unix.ETH_P_IP, unix.ETH_P_IPV6} {
 			for transport, proto := range []nl.IPProto{unix.IPPROTO_TCP, unix.IPPROTO_UDP} {
 				f := &netlink.Flower{
-					FilterAttrs: netlink.FilterAttrs{LinkIndex: link.Attrs().Index, Parent: parent,
-						Priority: prefBase + uint16(family*2+transport), Protocol: eth, Handle: filterBase | uint32(limit.Port)},
+					FilterAttrs: netlink.FilterAttrs{
+						LinkIndex: link.Attrs().Index, Parent: parent,
+						Priority: prefBase + uint16(family*2+transport), Protocol: eth, Handle: filterBase | uint32(limit.Port),
+					},
 					EthType: eth, IPProto: &proto, SkipHw: true,
 				}
 				if upload {

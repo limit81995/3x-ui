@@ -53,13 +53,16 @@ _openapi:
       title: Fetch a single inbound by numeric ID.
       url: '#fetch-a-single-inbound-by-numeric-id'
     - depth: 2
-      title: Create a new inbound. Send the full inbound payload (protocol, port,
-        settings, streamSettings, sniffing, remark, expiryTime, total, enable).
-        settings, streamSettings, and sniffing may be sent as nested JSON
-        objects (preferred) or as JSON-encoded strings (legacy). VLESS empty
-        fallback arrays are normalized away; nonempty fallbacks cannot be
-        combined with active server decryption.
-      url: '#create-a-new-inbound-send-the-full-inbound-payload-protocol-port-settings-streamsettings-sniffing-remark-expirytime-total-enable-settings-streamsettings-and-sniffing-may-be-sent-as-nested-json-objects-preferred-or-as-json-encoded-strings-legacy-vless-empty-fallback-arrays-are-normalized-away-nonempty-fallbacks-cannot-be-combined-with-active-server-decryption'
+      title: 'Create a new inbound. Send the full inbound payload (protocol, port,
+        settings, streamSettings, sniffing, remark, expiryTime, total, enable,
+        speedLimit). speedLimit is an integer from 0 to 10000 Mbps: upload and
+        download are independently capped at this rate, shared by all traffic on
+        the port; 0 disables the cap. Linux tc rules are applied after commit
+        and reconciled every minute. settings, streamSettings, and sniffing may
+        be sent as nested JSON objects (preferred) or as JSON-encoded strings
+        (legacy). VLESS empty fallback arrays are normalized away; nonempty
+        fallbacks cannot be combined with active server decryption.'
+      url: '#create-a-new-inbound-send-the-full-inbound-payload-protocol-port-settings-streamsettings-sniffing-remark-expirytime-total-enable-speedlimit-speedlimit-is-an-integer-from-0-to-10000-mbps-upload-and-download-are-independently-capped-at-this-rate-shared-by-all-traffic-on-the-port-0-disables-the-cap-linux-tc-rules-are-applied-after-commit-and-reconciled-every-minute-settings-streamsettings-and-sniffing-may-be-sent-as-nested-json-objects-preferred-or-as-json-encoded-strings-legacy-vless-empty-fallback-arrays-are-normalized-away-nonempty-fallbacks-cannot-be-combined-with-active-server-decryption'
     - depth: 2
       title: Delete an inbound by ID. Also removes its associated client stats rows.
       url: '#delete-an-inbound-by-id-also-removes-its-associated-client-stats-rows'
@@ -69,13 +72,14 @@ _openapi:
         at most once.
       url: '#delete-many-inbounds-in-one-call-processes-the-list-sequentially-failures-are-reported-per-id-and-the-rest-still-proceed-restarts-xray-at-most-once'
     - depth: 2
-      title: 'Replace an inbound’s configuration. Body shape mirrors /add, but the
+      title: 'Replace an inbound’s configuration. Body shape mirrors /add, including
+        speedLimit (0 clears the port cap; omitted defaults to 0), but the
         inbound keeps its stored client list and enable flag: settings.clients
         and enable in the body are ignored. Manage clients through the
         /panel/api/clients endpoints and toggle the inbound with /setEnable.
         Remove effective fallback rules before enabling VLESS server
         decryption.'
-      url: '#replace-an-inbounds-configuration-body-shape-mirrors-add-but-the-inbound-keeps-its-stored-client-list-and-enable-flag-settingsclients-and-enable-in-the-body-are-ignored-manage-clients-through-the-panelapiclients-endpoints-and-toggle-the-inbound-with-setenable-remove-effective-fallback-rules-before-enabling-vless-server-decryption'
+      url: '#replace-an-inbounds-configuration-body-shape-mirrors-add-including-speedlimit-0-clears-the-port-cap-omitted-defaults-to-0-but-the-inbound-keeps-its-stored-client-list-and-enable-flag-settingsclients-and-enable-in-the-body-are-ignored-manage-clients-through-the-panelapiclients-endpoints-and-toggle-the-inbound-with-setenable-remove-effective-fallback-rules-before-enabling-vless-server-decryption'
     - depth: 2
       title: Toggle only the enable flag without serialising the whole settings JSON.
         Recommended for UI switches on large inbounds.
@@ -161,26 +165,31 @@ _openapi:
         id: return-every-protocol-url-vless-vmess-trojan-ss-hysteria-mtproto-across-all-inbounds-and-all-of-their-clients-links-are-rendered-through-the-subscription-engine-so-the-configured-remark-template-name-only-display-part-is-applied-per-client--the-same-output-the-client-infoqr-pages-use-protocols-without-a-url-form-socks-http-mixed-wireguard-dokodemo-tunnel-contribute-nothing-used-by-the-panels-export-all-inbound-links-action
       - content: Fetch a single inbound by numeric ID.
         id: fetch-a-single-inbound-by-numeric-id
-      - content: Create a new inbound. Send the full inbound payload (protocol, port,
-          settings, streamSettings, sniffing, remark, expiryTime, total,
-          enable). settings, streamSettings, and sniffing may be sent as nested
-          JSON objects (preferred) or as JSON-encoded strings (legacy). VLESS
-          empty fallback arrays are normalized away; nonempty fallbacks cannot
-          be combined with active server decryption.
-        id: create-a-new-inbound-send-the-full-inbound-payload-protocol-port-settings-streamsettings-sniffing-remark-expirytime-total-enable-settings-streamsettings-and-sniffing-may-be-sent-as-nested-json-objects-preferred-or-as-json-encoded-strings-legacy-vless-empty-fallback-arrays-are-normalized-away-nonempty-fallbacks-cannot-be-combined-with-active-server-decryption
+      - content: 'Create a new inbound. Send the full inbound payload (protocol, port,
+          settings, streamSettings, sniffing, remark, expiryTime, total, enable,
+          speedLimit). speedLimit is an integer from 0 to 10000 Mbps: upload and
+          download are independently capped at this rate, shared by all traffic
+          on the port; 0 disables the cap. Linux tc rules are applied after
+          commit and reconciled every minute. settings, streamSettings, and
+          sniffing may be sent as nested JSON objects (preferred) or as
+          JSON-encoded strings (legacy). VLESS empty fallback arrays are
+          normalized away; nonempty fallbacks cannot be combined with active
+          server decryption.'
+        id: create-a-new-inbound-send-the-full-inbound-payload-protocol-port-settings-streamsettings-sniffing-remark-expirytime-total-enable-speedlimit-speedlimit-is-an-integer-from-0-to-10000-mbps-upload-and-download-are-independently-capped-at-this-rate-shared-by-all-traffic-on-the-port-0-disables-the-cap-linux-tc-rules-are-applied-after-commit-and-reconciled-every-minute-settings-streamsettings-and-sniffing-may-be-sent-as-nested-json-objects-preferred-or-as-json-encoded-strings-legacy-vless-empty-fallback-arrays-are-normalized-away-nonempty-fallbacks-cannot-be-combined-with-active-server-decryption
       - content: Delete an inbound by ID. Also removes its associated client stats rows.
         id: delete-an-inbound-by-id-also-removes-its-associated-client-stats-rows
       - content: Delete many inbounds in one call. Processes the list sequentially;
           failures are reported per id and the rest still proceed. Restarts xray
           at most once.
         id: delete-many-inbounds-in-one-call-processes-the-list-sequentially-failures-are-reported-per-id-and-the-rest-still-proceed-restarts-xray-at-most-once
-      - content: 'Replace an inbound’s configuration. Body shape mirrors /add, but the
+      - content: 'Replace an inbound’s configuration. Body shape mirrors /add, including
+          speedLimit (0 clears the port cap; omitted defaults to 0), but the
           inbound keeps its stored client list and enable flag: settings.clients
           and enable in the body are ignored. Manage clients through the
           /panel/api/clients endpoints and toggle the inbound with /setEnable.
           Remove effective fallback rules before enabling VLESS server
           decryption.'
-        id: replace-an-inbounds-configuration-body-shape-mirrors-add-but-the-inbound-keeps-its-stored-client-list-and-enable-flag-settingsclients-and-enable-in-the-body-are-ignored-manage-clients-through-the-panelapiclients-endpoints-and-toggle-the-inbound-with-setenable-remove-effective-fallback-rules-before-enabling-vless-server-decryption
+        id: replace-an-inbounds-configuration-body-shape-mirrors-add-including-speedlimit-0-clears-the-port-cap-omitted-defaults-to-0-but-the-inbound-keeps-its-stored-client-list-and-enable-flag-settingsclients-and-enable-in-the-body-are-ignored-manage-clients-through-the-panelapiclients-endpoints-and-toggle-the-inbound-with-setenable-remove-effective-fallback-rules-before-enabling-vless-server-decryption
       - content: Toggle only the enable flag without serialising the whole settings
           JSON. Recommended for UI switches on large inbounds.
         id: toggle-only-the-enable-flag-without-serialising-the-whole-settings-json-recommended-for-ui-switches-on-large-inbounds

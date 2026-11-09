@@ -23,7 +23,7 @@ func configuredPanelReleaseSource() (panelReleaseSource, error) {
 		source.repository = "limit81995/3x-ui"
 	}
 	if source.scriptRef == "" {
-		source.scriptRef = "dev"
+		source.scriptRef = "main"
 	}
 	if !releaseRepositoryPattern.MatchString(source.repository) {
 		return source, fmt.Errorf("XUI_RELEASE_REPO must be owner/repository")

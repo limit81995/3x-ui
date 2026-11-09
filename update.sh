@@ -8,7 +8,7 @@ plain='\033[0m'
 
 # Keep installers, menu downloads and child updater processes on the same fork.
 export XUI_RELEASE_REPO="${XUI_RELEASE_REPO:-limit81995/3x-ui}"
-export XUI_RELEASE_REF="${XUI_RELEASE_REF:-dev}"
+export XUI_RELEASE_REF="${XUI_RELEASE_REF:-main}"
 if [[ ! "$XUI_RELEASE_REPO" =~ ^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$ ]]; then
     echo "XUI_RELEASE_REPO must be owner/repository" >&2
     exit 1
