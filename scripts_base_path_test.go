@@ -158,7 +158,7 @@ setup_fail2ban() { printf 'fail2ban\n' >> "$TEST_SETTINGS_DIR/lifecycle"; }
 		}
 	}
 	cmd.Env = append(cmd.Env, "TEST_SETTINGS_DIR="+dir, "TEST_READ_MODE="+mode,
-		"XUI_DB_TYPE=sqlite", "XUI_PANEL_PORT=41234")
+		"XUI_DB_TYPE=sqlite", "XUI_PANEL_PORT=41234", "XUI_RELEASE_REPO=limit81995/3x-ui")
 	out, err := cmd.CombinedOutput()
 	return dir, string(out), err
 }

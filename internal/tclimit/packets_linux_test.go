@@ -122,7 +122,6 @@ func TestKernelPacketsShareDirectionalLimits(t *testing.T) {
 			t.Fatalf("directional cap ineffective: %.2f Mbps", mbps)
 		}
 	}
-
 }
 
 func htons(v uint16) uint16 { return v<<8 | v>>8 }

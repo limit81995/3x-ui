@@ -6,10 +6,11 @@ import (
 	"strings"
 	"time"
 
+	"gorm.io/gorm"
+
 	"github.com/mhsanaei/3x-ui/v3/internal/database"
 	"github.com/mhsanaei/3x-ui/v3/internal/database/model"
 	"github.com/mhsanaei/3x-ui/v3/internal/tclimit"
-	"gorm.io/gorm"
 )
 
 var tcAvailable = tclimit.Available
