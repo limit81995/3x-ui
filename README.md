@@ -16,16 +16,53 @@
 | 使用方式 | 所需发布产物 | 查看位置 |
 | --- | --- | --- |
 | Linux 脚本安装、命令行和面板更新 | 对应架构的 `x-ui-linux-*.tar.gz` 安装包及 `.sha256` 校验文件 | [本仓库 Releases](https://github.com/limit81995/3x-ui/releases) |
-| Docker 安装 | `ghcr.io/limit81995/3x-ui` 镜像及对应标签 | [本仓库 Packages](https://github.com/limit81995/3x-ui/packages) |
+| Docker 安装（GitHub） | `ghcr.io/limit81995/3x-ui` 镜像及对应标签 | [本仓库 Packages](https://github.com/limit81995/3x-ui/packages) |
+| Docker 安装（Docker Hub） | `limit81995/3xui` 镜像及对应标签 | [Docker Hub 标签列表](https://hub.docker.com/r/limit81995/3xui/tags) |
 
 **没有 Packages 不影响脚本安装；脚本能否安装取决于 Releases 是否已有所选版本和架构的安装包。** 安装器下载编译好的程序，不会直接把 GitHub 源码编译成服务；只有源码或 Actions 构建产物、没有 Release 安装包时，在线安装仍不可用。缺少版本时不会回退到原作者的安装包。
 
 - 推送符合路径条件的代码到 `main` 后，[Release 工作流](.github/workflows/release.yml) 构建成功才会发布或更新 `dev-latest` 预发布版；只修改 README 不触发发布。
-- Docker 镜像由独立的 [Docker 工作流](.github/workflows/docker.yml) 发布，触发方式是手动运行或推送 `v*.*.*` 标签。普通分支推送不会创建 Packages。
-- 手动运行 Docker 工作流并选择 `main` 分支，会发布下方示例使用的 `:main` 镜像。流程通过 `GITHUB_TOKEN` 写入 GHCR，无需 Docker Hub 账号；镜像首次发布后需将包设为 Public，并确认关联本仓库，其他用户才能匿名拉取。
+- Docker 镜像由现有 [Docker 工作流](.github/workflows/docker.yml) 构建并发布到 GHCR；配置好 Docker Hub 凭据后，同一次构建也发布到 `limit81995/3xui`。推送到 `main`、手动运行或推送 `v*.*.*` 标签都会触发；推送 `dev` 不自动发布镜像。
+- GHCR 使用 GitHub 自动提供的 `GITHUB_TOKEN`，工作流已声明 `packages: write`，无需另建 GitHub Token。首次发布后需将包设为 Public，其他用户才能匿名拉取。
 - 不带版本的安装命令和 `x-ui update` 查找最新稳定版；仅有 `dev-latest` 或其他预发布版时，应明确选择开发版或指定已有标签。当前版本标签构建默认也是预发布，维护者确认后需在 Release 页面取消预发布标记，才会成为稳定版候选。
 
 发布流程和最近运行结果见 [GitHub Actions](https://github.com/limit81995/3x-ui/actions)。
+
+### 第一次发布 Docker 镜像
+
+GitHub 仓库存放源码；GitHub Packages（GHCR）和 Docker Hub 存放构建好的容器镜像。两个镜像仓库彼此独立，不会自动同步。Fork 源码或创建 Docker Hub 空仓库，都不会自动产生镜像。本项目的工作流负责构建并向两个仓库上传，你无需在自己的电脑上执行 `docker push`。
+
+1. 在 Docker Hub 创建公开仓库 `limit81995/3xui`。注意这里的名称是 **`3xui`**，GHCR 的名称是 **`3x-ui`**。
+2. 在 Docker Hub 账号设置中生成具备仓库 **Read & Write** 权限的 Personal Access Token（PAT）。在 GitHub 本仓库的 **Settings → Secrets and variables → Actions → Secrets** 中配置以下两项；已经配置则无需重复添加。
+
+   | Secret 名称 | 值 |
+   | --- | --- |
+   | `DOCKER_HUB_USERNAME` | `limit81995`，填写账号名，不是邮箱或完整镜像名 |
+   | `DOCKER_HUB_TOKEN` | Docker Hub PAT，需能向 `limit81995/3xui` 写入 |
+
+3. 将当前发布配置合入 `main` 后会自动运行。也可打开 **Actions → Release 3X-UI for Docker → Run workflow**，选择 `main` 后运行。只推到 `dev` 时不会自动发布；想先测试可手动选择 `dev`，得到 `:dev` 镜像。
+4. 等待 `Login to GHCR`、`Login to Docker Hub`、`Build and push Docker image` 成功。在该次运行的 Summary 中查看实际发布的镜像标签；多个 CPU 架构需要全部构建完成。
+5. 首次发布 GHCR 后，从仓库右侧 **Packages** 打开 `3x-ui`，进入 **Package settings → Change visibility → Public**。工作流通过本仓库的 `GITHUB_TOKEN` 发布会自动关联仓库。Docker Hub 的 Tags 页面也应出现同次构建的标签。
+
+如果缺少任一 Docker Hub Secret，工作流会显示跳过提示并只发布 GHCR；如果填写了错误、过期或权限不足的 Token，登录或推送仍会失败，需修正对应 Secret。凭据只能配置在 Secrets 中，不要放入源码或 README。
+
+| 操作 | 两个仓库使用的标签 |
+| --- | --- |
+| 推送或合并到 `main`；手动运行 `main` | `main`、`latest` |
+| 推送 `dev` | 不自动发布 |
+| 手动运行 `dev` | `dev`，不更新 `main` 或 `latest` |
+| 推送版本标签，例如 `v3.11.0` | `v3.11.0`、`3.11.0`，不更新 `latest` |
+
+这里的 **`latest` 是 `main` 的滚动镜像，不表示已经发布稳定版**。Docker Hub 展示的 `docker push limit81995/3xui:tagname` 是上传命令示例，`tagname` 是需要替换的标签占位符，不会因创建仓库而自动生成。
+
+发布成功并公开后，可在任意安装了 Docker 的机器验证：
+
+```bash
+docker pull limit81995/3xui:main
+docker pull ghcr.io/limit81995/3x-ui:main
+```
+
+两者是同次构建的两个下载入口，实际部署任选一个即可。若刚发布的是 `dev`，将命令中的 `main` 替换为 `dev`。脚本安装仍使用 Releases，与这两个镜像仓库独立。
 
 ### 脚本安装（不使用 Docker）
 
@@ -53,7 +90,7 @@ sudo env XUI_INSTALL_ARCHIVE="$PWD/x-ui-linux-amd64.tar.gz" bash ./install.sh
 
 ### Docker 安装（host 模式）
 
-以下示例使用 `ghcr.io/limit81995/3x-ui:main` 镜像；需先通过现有 [Docker 工作流](.github/workflows/docker.yml) 在 `main` 分支手动构建并发布该标签，并确保镜像公开。
+以下示例使用 `ghcr.io/limit81995/3x-ui:main` 镜像；需先完成上面的首次发布步骤，并确保镜像公开。也可将命令末尾的镜像地址换成 `limit81995/3xui:main`，从 Docker Hub 下载。
 
 先在 Linux 宿主机加载限速模块，再启动容器：
 

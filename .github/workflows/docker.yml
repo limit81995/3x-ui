@@ -7,17 +7,43 @@ permissions:
 on:
   workflow_dispatch:
   push:
+    branches:
+      - main
     tags:
       - "v*.*.*"
+
+concurrency:
+  group: docker-publish-${{ github.ref }}
+  cancel-in-progress: false
 
 jobs:
   build:
     runs-on: ubuntu-latest
+    env:
+      DOCKER_HUB_IMAGE: docker.io/limit81995/3xui
 
     steps:
       - uses: actions/checkout@v7
         with:
           submodules: true
+
+      - name: Prepare publication
+        id: publication
+        env:
+          DOCKER_HUB_USERNAME: ${{ secrets.DOCKER_HUB_USERNAME }}
+          DOCKER_HUB_TOKEN: ${{ secrets.DOCKER_HUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          if [[ -n "$DOCKER_HUB_USERNAME" && -n "$DOCKER_HUB_TOKEN" ]]; then
+            echo "docker_hub=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "docker_hub=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::Docker Hub skipped: configure both DOCKER_HUB_USERNAME and DOCKER_HUB_TOKEN repository secrets to publish limit81995/3xui. GHCR will still be published."
+          fi
+          if [[ "$GITHUB_REF_TYPE" == "branch" ]]; then
+            echo "build_commit=${GITHUB_SHA::8}" >> "$GITHUB_OUTPUT"
+            echo "build_date=$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> "$GITHUB_OUTPUT"
+          fi
 
       - name: Docker meta
         id: meta
@@ -25,10 +51,15 @@ jobs:
         with:
           images: |
             ghcr.io/${{ github.repository }}
+            name=${{ env.DOCKER_HUB_IMAGE }},enable=${{ steps.publication.outputs.docker_hub }}
+          # latest deliberately tracks main, including rolling development builds.
+          # A manual dev build or an old version tag must not overwrite it.
+          flavor: latest=false
           tags: |
             type=ref,event=branch
             type=ref,event=tag
             type=semver,pattern={{version}}
+            type=raw,value=latest,enable=${{ github.ref == 'refs/heads/main' }}
 
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v4
@@ -43,6 +74,13 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Login to Docker Hub
+        if: steps.publication.outputs.docker_hub == 'true'
+        uses: docker/login-action@v4
+        with:
+          username: ${{ secrets.DOCKER_HUB_USERNAME }}
+          password: ${{ secrets.DOCKER_HUB_TOKEN }}
+
       - name: Build and push Docker image
         uses: docker/build-push-action@v7
         with:
@@ -51,5 +89,20 @@ jobs:
           provenance: mode=max
           sbom: true
           platforms: linux/amd64,linux/arm64/v8,linux/arm/v7,linux/arm/v6,linux/386
+          build-args: |
+            XUI_BUILD_COMMIT=${{ steps.publication.outputs.build_commit }}
+            XUI_BUILD_DATE=${{ steps.publication.outputs.build_date }}
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
+
+      - name: Published images
+        env:
+          IMAGE_TAGS: ${{ steps.meta.outputs.tags }}
+        run: |
+          {
+            echo '### Published Docker images'
+            echo '```text'
+            printf '%s\n' "$IMAGE_TAGS"
+            echo '```'
+            echo 'For anonymous GHCR pulls, set the package visibility to Public in Package settings after its first publication.'
+          } >> "$GITHUB_STEP_SUMMARY"
