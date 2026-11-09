@@ -11,19 +11,15 @@ export interface InstallOptions {
   webBasePath: string;
 }
 
-const REPO_RAW = 'https://raw.githubusercontent.com/mhsanaei/3x-ui/master/install.sh';
-const IMAGE = 'ghcr.io/mhsanaei/3x-ui:latest';
+const REPO_RAW = 'https://raw.githubusercontent.com/limit81995/3x-ui/dev/install.sh';
+const IMAGE = 'ghcr.io/limit81995/3x-ui:latest';
 
 function isLatest(version: string): boolean {
   const v = version.trim().toLowerCase();
   return v === '' || v === 'latest';
 }
 
-/**
- * The one-line script install command. The master install script reads the
- * version as its first argument: empty = latest stable release, a tag like
- * `v3.4.0` = that release, and `dev-latest` = the rolling per-commit dev build.
- */
+// The fork installer accepts a release tag; an empty version selects stable.
 export function buildScriptCommand(options: InstallOptions): string {
   if (isLatest(options.version)) {
     return `bash <(curl -Ls ${REPO_RAW})`;

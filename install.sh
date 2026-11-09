@@ -8,10 +8,15 @@ plain='\033[0m'
 
 xui_folder="${XUI_MAIN_FOLDER:=/usr/local/x-ui}"
 xui_service="${XUI_SERVICE:=/etc/systemd/system}"
-# Override explicitly when installing another fork or upstream release.
-XUI_RELEASE_REPO="${XUI_RELEASE_REPO:-limit81995/3x-ui}"
+# Keep installers, menu downloads and child updater processes on the same fork.
+export XUI_RELEASE_REPO="${XUI_RELEASE_REPO:-limit81995/3x-ui}"
+export XUI_RELEASE_REF="${XUI_RELEASE_REF:-main}"
 if [[ ! "$XUI_RELEASE_REPO" =~ ^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$ ]]; then
     echo "XUI_RELEASE_REPO must be owner/repository" >&2
+    exit 1
+fi
+if [[ ! "$XUI_RELEASE_REF" =~ ^[A-Za-z0-9][A-Za-z0-9._/-]*$ || "$XUI_RELEASE_REF" == *..* ]]; then
+    echo "XUI_RELEASE_REF must be a branch or tag name" >&2
     exit 1
 fi
 
@@ -1896,7 +1901,7 @@ install_x-ui() {
     else
         tag_version=$1
         # The rolling dev channel ships under a fixed, non-semver tag that is
-        # force-moved to the latest main commit on every push. Accept `dev` as a
+        # updated when a development build is published. Accept `dev` as a
         # convenient alias and skip the numeric floor check for it.
         if [[ "$tag_version" == "dev" || "$tag_version" == "dev-latest" ]]; then
             tag_version="dev-latest"
@@ -1926,11 +1931,10 @@ install_x-ui() {
         verify_release_checksum "${url}" "${xui_folder}-linux-$(arch).tar.gz"
     fi
     # x-ui.sh, x-ui.rc and the unit files must come from the same release as
-    # the binary; only the rolling dev build tracks main.
+    # the binary; the rolling dev build uses XUI_RELEASE_REF.
     local script_ref="${tag_version}"
     if [[ "${tag_version}" == "dev-latest" ]]; then
-        script_ref="${XUI_RELEASE_REF:-dev}"
-        [[ "${XUI_RELEASE_REPO,,}" != "mhsanaei/3x-ui" ]] || script_ref="${XUI_RELEASE_REF:-main}"
+        script_ref="${XUI_RELEASE_REF}"
     fi
     # The unit files are only fetched when the release tarball lacks them, so
     # they are checked at that point instead of here.
@@ -2202,9 +2206,7 @@ install_x-ui() {
     # works out of the box (no-op when XUI_ENABLE_FAIL2BAN=false). Never fatal.
     setup_fail2ban
 
-    if [[ "${XUI_RELEASE_REPO,,}" != "mhsanaei/3x-ui" || -n "${XUI_INSTALL_ARCHIVE:-}" ]]; then
-        echo "For fork builds, update with this installer and the matching package. The original panel/CLI updater still targets upstream."
-    fi
+    echo "Install/update source: ${XUI_RELEASE_REPO} (scripts: ${XUI_RELEASE_REF}). Online updates require a published release in this repository."
     echo -e "${green}x-ui ${tag_version}${plain} installation finished, it is running now..."
     echo -e ""
     echo -e "┌───────────────────────────────────────────────────────┐

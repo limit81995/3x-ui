@@ -10,9 +10,12 @@ on:
       - ".nvmrc"
       - "Makefile"
       - "install.sh"
+      - "update.sh"
+      - "x-ui.sh"
+      - "deploy/test/release-source.sh"
+      - ".github/workflows/docker.yml"
       - "deploy/test/installer-panel-port.sh"
       - "deploy/test/installer-archive.sh"
-      - "scripts/build-native.sh"
       - ".github/workflows/ci.yml"
   push:
     branches:
@@ -25,9 +28,12 @@ on:
       - ".nvmrc"
       - "Makefile"
       - "install.sh"
+      - "update.sh"
+      - "x-ui.sh"
+      - "deploy/test/release-source.sh"
+      - ".github/workflows/docker.yml"
       - "deploy/test/installer-panel-port.sh"
       - "deploy/test/installer-archive.sh"
-      - "scripts/build-native.sh"
       - ".github/workflows/ci.yml"
 
 permissions:
@@ -331,12 +337,13 @@ jobs:
         run: sudo apt-get update && sudo apt-get install -y shellcheck
       - name: shellcheck
         run: |
-          shellcheck --severity=style DockerInit.sh DockerEntrypoint.sh deploy/test/smoke-noninteractive.sh deploy/test/installer-panel-port.sh deploy/test/installer-archive.sh scripts/build-native.sh
+          shellcheck --severity=style DockerInit.sh DockerEntrypoint.sh deploy/test/smoke-noninteractive.sh deploy/test/installer-panel-port.sh deploy/test/installer-archive.sh deploy/test/release-source.sh
           shellcheck --severity=error install.sh update.sh x-ui.sh
       - name: Installer regression tests
         run: |
           bash deploy/test/installer-panel-port.sh
           bash deploy/test/installer-archive.sh
+          bash deploy/test/release-source.sh
 
   frontend:
     runs-on: ubuntu-latest

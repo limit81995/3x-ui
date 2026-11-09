@@ -41,7 +41,6 @@ type PanelUpdateInfo struct {
 }
 
 const (
-	panelUpdaterURL      = "https://raw.githubusercontent.com/MHSanaei/3x-ui/main/update.sh"
 	maxPanelUpdaterBytes = 2 << 20
 	maxPanelReleaseBytes = 2 << 20
 	// devReleaseTag is the fixed-tag rolling pre-release the CI force-moves to the
@@ -179,9 +178,8 @@ func getDevUpdateInfo() (*PanelUpdateInfo, error) {
 	}, nil
 }
 
-// StartUpdate starts the official updater using this panel's own channel
-// setting. Returns the run ID to pass to GetUpdateStatus so the caller can
-// tell this run's result apart from a stale one.
+// StartUpdate uses this panel's configured repository and channel.
+// The run ID distinguishes its status from earlier update attempts.
 func (s *PanelService) StartUpdate() (int64, error) {
 	return s.startUpdate(devChannelActive())
 }
@@ -230,6 +228,11 @@ func (s *PanelService) startUpdate(useDev bool) (int64, error) {
 		return 0, fmt.Errorf("panel web update is supported only on Linux installations")
 	}
 
+	source, err := configuredPanelReleaseSource()
+	if err != nil {
+		return 0, err
+	}
+
 	bash, err := exec.LookPath("bash")
 	if err != nil {
 		return 0, fmt.Errorf("bash is required to run the panel updater: %w", err)
@@ -253,7 +256,7 @@ func (s *PanelService) startUpdate(useDev bool) (int64, error) {
 	// update.sh sends its curl downloads through the panel egress bridge. With socks5h the
 	// proxy resolves GitHub's hostnames, since this server's own DNS may be filtered.
 	egressEnv := "XUI_UPDATE_PROXY=" + strings.Replace((&service.SettingService{}).PanelEgressProxyURL(), "socks5://", "socks5h://", 1)
-	proxyEnv := updateProxyEnvVars()
+	childEnv := append(source.env(), updateProxyEnvVars()...)
 
 	if systemdRun, err := exec.LookPath("systemd-run"); err == nil {
 		unitName := fmt.Sprintf("x-ui-web-update-%d", time.Now().Unix())
@@ -266,7 +269,7 @@ func (s *PanelService) startUpdate(useDev bool) (int64, error) {
 			"--setenv", statusFileEnv,
 			"--setenv", egressEnv,
 		}
-		for _, kv := range proxyEnv {
+		for _, kv := range childEnv {
 			args = append(args, "--setenv", kv)
 		}
 		args = append(args, bash, "-lc", updateScript)
@@ -296,6 +299,7 @@ func (s *PanelService) startUpdate(useDev bool) (int64, error) {
 		statusFileEnv,
 		egressEnv,
 	)
+	cmd.Env = append(cmd.Env, source.env()...)
 	setDetachedProcess(cmd)
 	if err := cmd.Start(); err != nil {
 		_ = os.Remove(scriptPath)
@@ -379,8 +383,12 @@ func releaseUpdateSlot() {
 }
 
 func downloadPanelUpdater() (string, error) {
+	source, err := configuredPanelReleaseSource()
+	if err != nil {
+		return "", err
+	}
 	client := (&service.SettingService{}).NewProxiedHTTPClient(15 * time.Second)
-	req, reqErr := http.NewRequestWithContext(context.Background(), http.MethodGet, panelUpdaterURL, nil)
+	req, reqErr := http.NewRequestWithContext(context.Background(), http.MethodGet, source.updaterURL(), nil)
 	if reqErr != nil {
 		return "", fmt.Errorf("download panel updater: %w", reqErr)
 	}
@@ -390,7 +398,7 @@ func downloadPanelUpdater() (string, error) {
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusOK {
-		return "", fmt.Errorf("download panel updater: unexpected HTTP %d", resp.StatusCode)
+		return "", fmt.Errorf("download panel updater from %s (%s): unexpected HTTP %d", source.repository, source.scriptRef, resp.StatusCode)
 	}
 
 	file, err := os.CreateTemp("", "3x-ui-update-*.sh")
@@ -437,12 +445,12 @@ func fetchLatestPanelVersion() (string, error) {
 // fetchPanelRelease fetches a release from GitHub. An empty tag resolves the
 // latest stable release; a non-empty tag (e.g. dev-latest) resolves that tag.
 func fetchPanelRelease(tag string) (*service.Release, error) {
-	url := "https://api.github.com/repos/MHSanaei/3x-ui/releases/latest"
-	if tag != "" {
-		url = "https://api.github.com/repos/MHSanaei/3x-ui/releases/tags/" + tag
+	source, err := configuredPanelReleaseSource()
+	if err != nil {
+		return nil, err
 	}
 	client := (&service.SettingService{}).NewProxiedHTTPClient(10 * time.Second)
-	req, reqErr := http.NewRequestWithContext(context.Background(), http.MethodGet, url, nil)
+	req, reqErr := http.NewRequestWithContext(context.Background(), http.MethodGet, source.releaseURL(tag), nil)
 	if reqErr != nil {
 		return nil, reqErr
 	}
@@ -452,7 +460,7 @@ func fetchPanelRelease(tag string) (*service.Release, error) {
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("GitHub API returned status %d: %s", resp.StatusCode, resp.Status)
+		return nil, fmt.Errorf("GitHub release lookup for %s returned status %d: %s", source.repository, resp.StatusCode, resp.Status)
 	}
 
 	var release service.Release

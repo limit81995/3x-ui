@@ -44,7 +44,8 @@ write_files:
       #   export XUI_DB_DSN="postgres://user:pass@host:5432/db?sslmode=disable"
       # ------------------------------------------------------------------------
 
-      curl -fsSL https://raw.githubusercontent.com/MHSanaei/3x-ui/main/install.sh | bash
+      curl -fsSL https://raw.githubusercontent.com/limit81995/3x-ui/dev/install.sh -o /opt/xui-install.sh
+      bash /opt/xui-install.sh
 
       # Surface the generated credentials. Full creds (incl. password + API token)
       # go ONLY to the serial console (/dev/console, owner-only). /etc/motd is
