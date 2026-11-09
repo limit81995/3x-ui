@@ -4,7 +4,19 @@ internal/web/dist
 build
 db
 cert
+acme
 pgdata
 x-ui/
 *.db
 *.dump
+
+# Local runtime credentials and developer settings are not build inputs.
+.env
+.env.*
+!.env.example
+.aws
+.ssh
+.codex
+*.db-wal
+*.db-shm
+*.db-journal

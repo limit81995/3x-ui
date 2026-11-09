@@ -16,6 +16,8 @@ FROM golang:1.27-alpine AS builder
 WORKDIR /app
 ARG TARGETARCH
 ARG TARGETVARIANT
+ARG XUI_BUILD_COMMIT=""
+ARG XUI_BUILD_DATE=""
 
 RUN apk --no-cache --update add \
   build-base \
@@ -28,7 +30,8 @@ COPY --from=frontend /src/internal/web/dist ./internal/web/dist
 
 ENV CGO_ENABLED=1
 ENV CGO_CFLAGS="-D_LARGEFILE64_SOURCE"
-RUN go build -ldflags "-w -s" -o build/x-ui main.go
+ARG GOPROXY=https://proxy.golang.org,direct
+RUN go build -ldflags "-w -s -X github.com/mhsanaei/3x-ui/v3/internal/config.buildCommit=${XUI_BUILD_COMMIT} -X github.com/mhsanaei/3x-ui/v3/internal/config.buildDate=${XUI_BUILD_DATE}" -o build/x-ui main.go
 RUN ./DockerInit.sh "$TARGETARCH" "$TARGETVARIANT"
 
 # ========================================================
